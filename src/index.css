@@ -1,0 +1,17 @@
+/* src/index.css */
+@import 'tailwindcss';
+
+:root {
+  --color-light: #F9F7F7;
+  --color-muted: #DBE2EF;
+  --color-primary: #3F72AF;
+  --color-dark: #112D4E;
+}
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background-color: var(--color-light);
+  color: var(--color-dark);
+  margin: 0;
+  padding: 0;
+}
