@@ -1,76 +1,206 @@
-// src/pages/AdvancedChart1Page.jsx
-import { useContext, useEffect, useRef, useMemo } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { DataContext } from '../context/DataContext';
-import * as d3 from 'd3';
 import PageTitle from '../components/ui/PageTitle';
 import Card from '../components/ui/Card';
 import InsightAccordion from '../components/dashboard/InsightAccordion';
 import EmptyState from '../components/ui/EmptyState';
 import Spinner from '../components/ui/Spinner';
+import AdvancedBuilderPanel from '../components/dashboard/AdvancedBuilderPanel';
+import FilterBar from '../components/dashboard/FilterBar';
+import Button from '../components/ui/Button';
+import { Settings2 } from 'lucide-react';
+import { updateDatasetConfig } from '../services/firebase';
+import { flatToGraph, applyFilters } from '../services/aggregationEngine';
+import ReactECharts from 'echarts-for-react';
 
 const AdvancedChart1Page = () => {
-  const { parsedData, schema, loading } = useContext(DataContext);
-  const svgRef = useRef();
-
-  const isCompatible = useMemo(() => {
-    if (!schema) return false;
-    const catCols = schema.columns.filter(c => c.type === 'string' && schema.stats[c.name].uniqueCount > 1);
-    return catCols.length >= 2;
-  }, [schema]);
+  const { selectedDataset, parsedData, schema, loading } = useContext(DataContext);
+  const [isEditing, setIsEditing] = useState(false);
+  const [config, setConfig] = useState(null);
+  const [filters, setFilters] = useState({});
 
   useEffect(() => {
-    if (!isCompatible || !parsedData || parsedData.length === 0) return;
-    const width = 800, height = 800, cx = width / 2, cy = height / 2, radius = Math.min(width, height) / 2 - 80;
-    const catCols = schema.columns.filter(c => c.type === 'string');
-    const hierarchyData = { name: "Root", children: [] };
-    const groupMap = d3.group(parsedData, d => d[catCols[0].name], d => d[catCols[1].name]);
+    if (selectedDataset) {
+      setConfig(selectedDataset.advancedChart1Config || null);
+    }
+  }, [selectedDataset]);
+
+  const handleSaveConfig = async (newConfig) => {
+    setConfig(newConfig);
+    if (selectedDataset?.id) {
+      try {
+        await updateDatasetConfig(selectedDataset.id, newConfig, 'advancedChart1Config');
+      } catch (e) {
+        console.error("Failed to save config", e);
+      }
+    }
+  };
+
+  const isConfigured = config && config.dimensions && config.dimensions.length >= 2 && config.dimensions.every(d => d !== '');
+
+  const isCompatible = () => {
+    if (!schema) return false;
+    if (!isConfigured) return true;
+    const colNames = schema.columns.map(c => c.name);
+    return config.dimensions.every(dim => colNames.includes(dim));
+  };
+
+  const handleFilterChange = (key, value) => setFilters(prev => ({ ...prev, [key]: value }));
+
+  const filteredData = parsedData ? applyFilters(parsedData, filters) : [];
+
+  // For Radial Tree, ECharts tree requires hierarchical data.
+  // We can convert the graph nodes/links into a tree.
+  const buildTree = (graph) => {
+    if (!graph.nodes || graph.nodes.length === 0) return { name: 'Root', children: [] };
     
-    for (const [key1, value1] of groupMap.entries()) {
-      const children1 = [];
-      for (const [key2, value2] of value1.entries()) children1.push({ name: String(key2), value: value2.length });
-      hierarchyData.children.push({ name: String(key1), children: children1 });
+    // Find all nodes that are targets
+    const targetSet = new Set(graph.links.map(l => l.target));
+    // Sources are nodes that are never targets
+    let rootNodes = graph.nodes.filter(n => !targetSet.has(n.id));
+    
+    if (rootNodes.length === 0) {
+      // Cyclic graph fallback: just pick the first node
+      rootNodes = [graph.nodes[0]];
     }
 
-    const root = d3.hierarchy(hierarchyData).sort((a, b) => d3.ascending(a.data.name, b.data.name));
-    d3.cluster().size([2 * Math.PI, radius])(root);
+    const buildChildren = (nodeId, depth) => {
+      if (depth > 5) return []; // Prevent infinite recursion in cyclic graphs
+      const childrenLinks = graph.links.filter(l => l.source === nodeId);
+      return childrenLinks.map(l => {
+        const tgtNode = graph.nodes.find(n => n.id === l.target);
+        return {
+          name: tgtNode ? tgtNode.name : l.target,
+          value: l.value,
+          children: buildChildren(l.target, depth + 1)
+        };
+      });
+    };
 
-    const svg = d3.select(svgRef.current).attr("viewBox", [-cx, -cy, width, height]).style("width", "100%").style("height", "auto").style("font", "10px sans-serif");
-    svg.selectAll('*').remove();
+    const treeData = {
+      name: 'Root',
+      children: rootNodes.map(n => ({
+        name: n.name,
+        value: n.value,
+        children: buildChildren(n.id, 0)
+      }))
+    };
 
-    const g = svg.append("g");
-    svg.call(d3.zoom().on("zoom", e => g.attr("transform", e.transform)));
+    // If there's only one root node, simplify
+    if (treeData.children.length === 1) {
+      return treeData.children[0];
+    }
 
-    g.append("g").attr("fill", "none").attr("stroke", "#555").attr("stroke-opacity", 0.4).attr("stroke-width", 1.5)
-      .selectAll("path").data(root.links()).join("path").attr("d", d3.linkRadial().angle(d => d.x).radius(d => d.y));
+    return treeData;
+  };
 
-    const node = g.append("g").attr("stroke-linejoin", "round").attr("stroke-width", 3)
-      .selectAll("g").data(root.descendants()).join("g").attr("transform", d => `rotate(${d.x * 180 / Math.PI - 90}) translate(${d.y},0)`);
+  const graphData = isConfigured && filteredData ? flatToGraph(filteredData, config.dimensions, config.weightCol, config.aggType) : { nodes: [], links: [] };
+  const treeData = buildTree(graphData);
 
-    node.append("circle").attr("fill", d => d.children ? "#555" : "#999").attr("r", 2.5);
-    node.append("text").attr("dy", "0.31em").attr("x", d => d.x < Math.PI === !d.children ? 6 : -6)
-      .attr("text-anchor", d => d.x < Math.PI === !d.children ? "start" : "end").attr("transform", d => d.x >= Math.PI ? "rotate(180)" : null)
-      .text(d => d.data.name).clone(true).lower().attr("stroke", "white");
-
-    return () => svg.selectAll('*').remove();
-  }, [parsedData, isCompatible, schema]);
+  const option = {
+    tooltip: {
+      trigger: 'item',
+      triggerOn: 'mousemove',
+      formatter: function(params) {
+        const val = new Intl.NumberFormat('en-US', { notation: 'compact' }).format(params.value);
+        return `${params.name}: ${val}`;
+      }
+    },
+    series: [
+      {
+        type: 'tree',
+        data: [treeData],
+        top: '5%',
+        bottom: '5%',
+        left: '5%',
+        right: '5%',
+        layout: 'radial',
+        symbol: 'circle',
+        symbolSize: 12,
+        initialTreeDepth: -1,
+        animationDurationUpdate: 750,
+        roam: 'move',
+        expandAndCollapse: true,
+        label: {
+          show: true,
+          position: 'right',
+          distance: 7,
+          formatter: function(params) {
+            if (!params.value) return params.name;
+            const val = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(params.value);
+            return `{name|${params.name}} {val|${val}}`;
+          },
+          rich: {
+            name: { color: '#112D4E', fontSize: 12, fontWeight: 'bold' },
+            val: { color: '#3F72AF', fontSize: 11, fontWeight: 'bold' }
+          }
+        },
+        itemStyle: {
+          color: '#3F72AF',
+          borderColor: '#112D4E',
+          borderWidth: 1.5
+        },
+        lineStyle: {
+          color: '#ccc',
+          curveness: 0.5,
+          width: 1.5
+        }
+      }
+    ]
+  };
 
   return (
     <div className="space-y-6">
-      <PageTitle title="Radial Tidy Tree" />
+      <div className="flex justify-between items-center">
+        <div>
+          <PageTitle title="Radial Tree Diagram" />
+          <p className="text-gray-500 dark:text-gray-400">Visualize hierarchical structure radiating outward using Apache ECharts.</p>
+        </div>
+        {selectedDataset && (
+          <Button variant={isEditing ? "primary" : "secondary"} onClick={() => setIsEditing(!isEditing)}>
+            <Settings2 className="w-4 h-4 mr-2" />
+            {isEditing ? "Close Builder" : "Edit Chart"}
+          </Button>
+        )}
+      </div>
       
+      {isEditing && selectedDataset && (
+        <AdvancedBuilderPanel 
+          config={config} 
+          onSave={handleSaveConfig} 
+          onClose={() => setIsEditing(false)}
+          columns={schema?.columns?.map(c => c.name) || []} 
+        />
+      )}
+
+      {!loading && selectedDataset && (
+        <FilterBar 
+          schemaFilters={selectedDataset.dashboardConfig?.filters || []} 
+          parsedData={parsedData}
+          filters={filters} 
+          onFilterChange={handleFilterChange} 
+          onReset={() => setFilters({})}
+        />
+      )}
+
       {loading ? (
         <div className="h-64 flex items-center justify-center"><Spinner /></div>
-      ) : !isCompatible ? (
-        <EmptyState title="Incompatible Dataset" description="This chart requires at least 2 categorical (string) columns." />
+      ) : !selectedDataset ? (
+        <EmptyState title="No Dataset Selected" description="Please set a primary dataset in Data Management first." />
+      ) : !isCompatible() ? (
+        <EmptyState title="Incompatible Data Mapping" description="The selected columns do not exist in the current dataset schema." />
+      ) : !isConfigured ? (
+        <EmptyState title="Build Your Advanced Chart" description="Your chart is empty. Click 'Edit Chart' to define source and target nodes." />
       ) : (
         <>
-          <Card className="w-full flex justify-center overflow-hidden min-h-[600px] p-0 relative">
-            <svg ref={svgRef} className="w-full h-full max-h-[800px]"></svg>
+          <Card className="w-full min-h-[700px] p-0 relative overflow-hidden bg-gray-50 dark:bg-gray-900 border-2 dark:border-[#3F72AF]/30">
+            <ReactECharts option={option} style={{ height: '700px', width: '100%' }} />
           </Card>
-          <InsightAccordion insight="Radial trees efficiently display hierarchical relationships, radiating outward from a central root node." />
+          <InsightAccordion insight="Radial trees efficiently display hierarchical relationships. Use the mouse wheel to zoom in/out, and click and drag to pan around the graph." />
         </>
       )}
     </div>
   );
 };
+
 export default AdvancedChart1Page;

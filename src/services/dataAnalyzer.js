@@ -80,3 +80,37 @@ export const analyzeSchema = (rows) => {
 
   return { columns, stats, suggestedFilters, suggestedCharts: suggestedCharts.slice(0, 4), suggestedKPIs: suggestedKPIs.slice(0, 4) };
 };
+
+export const transformDataset = (rawRows, schemaConfig) => {
+  return rawRows.map(row => {
+    const newRow = { ...row };
+    for (const [col, type] of Object.entries(schemaConfig)) {
+      let val = newRow[col];
+      if (val === null || val === undefined || val === '') continue;
+      
+      try {
+        switch (type) {
+          case 'number':
+            newRow[col] = Number(String(val).replace(/[^0-9.-]+/g, ''));
+            break;
+          case 'date':
+            const d = new Date(val);
+            if (!isNaN(d.getTime())) newRow[col] = d.toISOString().split('T')[0];
+            break;
+          case 'currency':
+            newRow[col] = Number(String(val).replace(/[^0-9.-]+/g, ''));
+            break;
+          case 'string':
+          case 'category':
+            newRow[col] = String(val).trim();
+            break;
+          default:
+            break;
+        }
+      } catch (e) {
+        // Fallback to original
+      }
+    }
+    return newRow;
+  });
+};

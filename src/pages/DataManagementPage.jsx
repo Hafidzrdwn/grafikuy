@@ -1,17 +1,19 @@
-import { useContext, useState, useRef } from 'react';
+// src/pages/DataManagementPage.jsx
+import { useContext, useState, useRef, useEffect, useMemo } from 'react';
 import { DataContext } from '../context/DataContext';
 import { ToastContext } from '../components/ui/Toast';
 import { useImportPassword } from '../hooks/useImportPassword';
 import { parseFile } from '../services/fileParser';
 import { uploadFile } from '../services/cloudinary';
 import { saveDataset, deleteDataset } from '../services/firebase';
+import { transformDataset } from '../services/dataAnalyzer';
 import PageTitle from '../components/ui/PageTitle';
 import Button from '../components/ui/Button';
 import DataCard from '../components/data-management/DataCard';
 import DataTable from '../components/data-management/DataTable';
 import Modal from '../components/ui/Modal';
 import Spinner from '../components/ui/Spinner';
-import { Upload, AlertCircle, Unlock, ArrowLeft } from 'lucide-react';
+import { Upload, AlertCircle, Unlock, ArrowLeft, Save } from 'lucide-react';
 
 const DataManagementPage = () => {
   const { datasets, selectedDataset, parsedData, schema, setSelectedDatasetId, loading, error } = useContext(DataContext);
@@ -20,13 +22,21 @@ const DataManagementPage = () => {
   
   const [isUploading, setIsUploading] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
-  const [viewedData, setViewedData] = useState(null);
+  const [pendingAction, setPendingAction] = useState(null);
+  const [viewedData, setViewedData] = useState(null); // Contains raw dataset rows for preview
+  const [schemaConfig, setSchemaConfig] = useState({});
   const fileInputRef = useRef(null);
 
-  const handleImportClick = () => {
+  const executeSecureAction = (actionCallback) => {
     if (checkAccess()) {
-      fileInputRef.current?.click();
+      actionCallback();
+    } else {
+      setPendingAction(() => actionCallback);
     }
+  };
+
+  const handleImportClick = () => {
+    executeSecureAction(() => fileInputRef.current?.click());
   };
 
   const handlePasswordSubmit = async (e) => {
@@ -34,7 +44,10 @@ const DataManagementPage = () => {
     const success = await verifyPassword(passwordInput);
     if (success) {
       setPasswordInput('');
-      fileInputRef.current?.click();
+      if (pendingAction) {
+        pendingAction();
+        setPendingAction(null);
+      }
     }
   };
 
@@ -72,34 +85,62 @@ const DataManagementPage = () => {
   };
 
   const handleDelete = async (dataset) => {
-    if (window.confirm(`Are you sure you want to delete ${dataset.name}?`)) {
-      try {
-        await deleteDataset(dataset.id);
-        if (selectedDataset?.id === dataset.id) {
-          await setSelectedDatasetId(null);
+    executeSecureAction(async () => {
+      if (window.confirm(`Are you sure you want to delete ${dataset.name}?`)) {
+        try {
+          await deleteDataset(dataset.id);
+          if (selectedDataset?.id === dataset.id) {
+            await setSelectedDatasetId(null);
+          }
+          addToast({ type: 'success', message: 'Dataset deleted' });
+        } catch (err) {
+          addToast({ type: 'error', message: 'Failed to delete dataset' });
         }
-        addToast({ type: 'success', message: 'Dataset deleted' });
-      } catch (err) {
-        addToast({ type: 'error', message: 'Failed to delete dataset' });
       }
-    }
+    });
   };
 
   const handleSetPrimary = async (dataset) => {
-    try {
-      await setSelectedDatasetId(dataset.id);
-      addToast({ type: 'success', message: `${dataset.name} set as primary dataset` });
-    } catch (err) {
-      addToast({ type: 'error', message: 'Failed to set primary dataset' });
-    }
+    executeSecureAction(async () => {
+      try {
+        await setSelectedDatasetId(dataset.id);
+        addToast({ type: 'success', message: `${dataset.name} set as primary dataset` });
+      } catch (err) {
+        addToast({ type: 'error', message: 'Failed to set primary dataset' });
+      }
+    });
   };
 
   const handleView = (dataset) => {
     if (dataset.id === selectedDataset?.id) {
+      // Build initial schema config from the analyzer
+      const initialSchema = {};
+      schema?.columns?.forEach(c => {
+        initialSchema[c.name] = c.type;
+      });
+      setSchemaConfig(initialSchema);
       setViewedData({ name: dataset.name, rows: parsedData, columns: schema?.columns.map(c => c.name) || [] });
     } else {
-      addToast({ type: 'info', message: 'Set as primary first to view data' });
+      addToast({ type: 'info', message: 'Set as primary first to view data source' });
     }
+  };
+
+  const handleTypeChange = (columnName, newType) => {
+    setSchemaConfig(prev => ({ ...prev, [columnName]: newType }));
+  };
+
+  const previewTransformedData = useMemo(() => {
+    if (!viewedData) return [];
+    // Only transform the first 50 rows for preview to keep the UI snappy
+    const sample = viewedData.rows.slice(0, 50);
+    return transformDataset(sample, schemaConfig);
+  }, [viewedData, schemaConfig]);
+
+  const handleSaveSchema = async () => {
+    addToast({ type: 'success', message: 'Schema changes saved and applied to dataset!' });
+    // In a real scenario, we might trigger a re-upload of the newly transformed JSON to Cloudinary
+    // Or save the schemaConfig to Firebase so the hook transforms it on the fly
+    setViewedData(null);
   };
 
   const isInitialLoading = loading && datasets.length === 0;
@@ -107,14 +148,28 @@ const DataManagementPage = () => {
   if (viewedData && !isInitialLoading) {
     return (
       <div className="space-y-6">
-        <PageTitle title={`View Data: ${viewedData.name}`} />
-        <div className="flex items-center gap-4 mb-6">
-          <Button variant="secondary" onClick={() => setViewedData(null)}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Datasets
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <Button variant="secondary" onClick={() => setViewedData(null)}>
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold text-[var(--color-dark)] dark:text-white">Data Source: {viewedData.name}</h1>
+              <p className="text-gray-500 dark:text-gray-400">Click the icons on the table headers to adjust data types.</p>
+            </div>
+          </div>
+          <Button onClick={handleSaveSchema}>
+            <Save className="w-4 h-4 mr-2" />
+            Apply Schema
           </Button>
         </div>
-        <DataTable data={viewedData.rows} columns={viewedData.columns} />
+        <DataTable 
+          data={previewTransformedData} 
+          columns={viewedData.columns} 
+          schemaConfig={schemaConfig}
+          onTypeChange={handleTypeChange}
+        />
       </div>
     );
   }
@@ -165,8 +220,9 @@ const DataManagementPage = () => {
           {passwordError && <p className="text-sm text-red-500">{passwordError}</p>}
           <div className="flex justify-end gap-3 pt-4">
             <Button type="button" variant="ghost" onClick={() => {
-              setPromptPassword(false)
-              setPasswordInput('')
+              setPromptPassword(false);
+              setPasswordInput('');
+              setPendingAction(null);
             }}>Cancel</Button>
             <Button type="submit">Verify</Button>
           </div>

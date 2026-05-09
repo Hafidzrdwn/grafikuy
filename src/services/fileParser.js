@@ -12,16 +12,23 @@ export const parseFile = async (file) => {
         const data = e.target.result;
         let rows = [];
 
+        // Configure XLSX to safely handle cell dates and parse them correctly
+        const readOptions = { 
+          cellDates: true, 
+          dateNF: 'yyyy-mm-dd', // format output string internally before JS Date conversion
+        };
+
         if (file.name.endsWith('.csv')) {
-          const workbook = XLSX.read(data, { type: 'string' });
-          const firstSheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[firstSheetName];
-          rows = XLSX.utils.sheet_to_json(worksheet);
-        } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-          const workbook = XLSX.read(data, { type: 'array' });
+          const workbook = XLSX.read(data, { type: 'string', ...readOptions });
           const firstSheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[firstSheetName];
           rows = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+        } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+          const workbook = XLSX.read(data, { type: 'array', ...readOptions });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          // use raw: false so it applies the dateNF format instead of keeping raw epoch 44929
+          rows = XLSX.utils.sheet_to_json(worksheet, { defval: "", raw: false });
         } else {
           return reject(new Error("Unsupported file type. Use .csv or .xlsx"));
         }
@@ -31,8 +38,12 @@ export const parseFile = async (file) => {
         }
 
         const columns = Object.keys(rows[0]);
+        // Extract up to 50 rows for preview sampling
+        const previewRows = rows.slice(0, 50);
+
         resolve({
-          rows,
+          rows, // all rows (could be 10k)
+          previewRows,
           columns,
           rowCount: rows.length
         });

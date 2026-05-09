@@ -1,4 +1,4 @@
-import { useContext, useMemo, useState } from 'react';
+import { useContext, useMemo, useState, useEffect } from 'react';
 import { DataContext } from '../context/DataContext';
 import PageTitle from '../components/ui/PageTitle';
 import EmptyState from '../components/ui/EmptyState';
@@ -12,35 +12,68 @@ import LineChart from '../components/charts/LineChart';
 import PieChart from '../components/charts/PieChart';
 import ScatterChart from '../components/charts/ScatterChart';
 import InsightAccordion from '../components/dashboard/InsightAccordion';
+import DashboardBuilderPanel from '../components/dashboard/DashboardBuilderPanel';
+import Button from '../components/ui/Button';
+import { Settings2 } from 'lucide-react';
+import { applyFilters, aggregateData } from '../services/aggregationEngine';
+import { updateDatasetConfig } from '../services/firebase';
 
 const DashboardPage = () => {
   const { selectedDataset, parsedData, schema, loading } = useContext(DataContext);
   const [filters, setFilters] = useState({});
+  const [isEditing, setIsEditing] = useState(false);
+  const [dashboardConfig, setDashboardConfig] = useState(null);
+
+  useEffect(() => {
+    if (selectedDataset) {
+      setDashboardConfig(selectedDataset.dashboardConfig || { filters: [], kpiCards: [], charts: [] });
+    }
+  }, [selectedDataset]);
+
+  const handleSaveConfig = async (newConfig) => {
+    setDashboardConfig(newConfig);
+    if (selectedDataset?.id) {
+      try {
+        await updateDatasetConfig(selectedDataset.id, newConfig);
+      } catch (e) {
+        console.error("Failed to save config to firebase", e);
+      }
+    }
+  };
+
+  const activeConfig = dashboardConfig || { filters: [], kpiCards: [], charts: [] };
 
   const filteredData = useMemo(() => {
     if (!parsedData || parsedData.length === 0) return [];
-    let data = parsedData;
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value !== '' && value !== null) {
-        data = data.filter(row => String(row[key]) === String(value));
-      }
-    });
-    return data;
+    return applyFilters(parsedData, filters);
   }, [parsedData, filters]);
 
   const kpis = useMemo(() => {
-    if (!schema?.suggestedKPIs || filteredData.length === 0) return [];
-    return schema.suggestedKPIs.map(kpi => {
+    if (!activeConfig.kpiCards || filteredData.length === 0) return [];
+    return activeConfig.kpiCards.map(kpi => {
       let value = 0;
-      if (kpi.agg === 'avg') {
-        const sum = filteredData.reduce((acc, row) => acc + (Number(row[kpi.column]) || 0), 0);
-        value = (sum / filteredData.length).toFixed(2);
-      } else if (kpi.agg === 'countUnique') {
+      if (kpi.aggType === 'countUnique' || kpi.agg === 'countUnique') {
         value = new Set(filteredData.map(r => r[kpi.column])).size;
+      } else {
+        value = aggregateData(filteredData, null, kpi.column, kpi.aggType || kpi.agg);
       }
-      return { label: kpi.label, value, trend: 'up', trendValue: '+0%' };
+      
+      let formattedValue = value;
+      if (kpi.format === 'raw') {
+        formattedValue = Number(value).toFixed(kpi.decimals ?? 0);
+      } else {
+        formattedValue = new Intl.NumberFormat('en-US', {
+          minimumFractionDigits: kpi.decimals ?? 0,
+          maximumFractionDigits: kpi.decimals ?? 0,
+        }).format(value);
+      }
+      
+      return { 
+        label: kpi.label || kpi.column, 
+        value: `${kpi.prefix || ''}${formattedValue}`.trim()
+      };
     });
-  }, [schema, filteredData]);
+  }, [activeConfig.kpiCards, filteredData]);
 
   const handleFilterChange = (key, value) => setFilters(prev => ({ ...prev, [key]: value }));
 
@@ -48,63 +81,83 @@ const DashboardPage = () => {
 
   const renderChart = (chartConfig) => {
     let chartData = [];
+    const dim = chartConfig.dimension || chartConfig.xAxis || chartConfig.category;
+    const meas = chartConfig.measure || chartConfig.yAxis || chartConfig.value;
+    const agg = chartConfig.aggType || 'sum';
+    const isHorizontal = chartConfig.orientation === 'horizontal';
+
     if (chartConfig.type === 'BarChart' || chartConfig.type === 'LineChart') {
-      const agg = {};
-      filteredData.forEach(row => {
-        const x = row[chartConfig.xAxis];
-        const y = Number(row[chartConfig.yAxis]) || 0;
-        if (!agg[x]) agg[x] = 0;
-        agg[x] += y;
-      });
-      chartData = Object.keys(agg).map(k => ({ label: String(k), value: agg[k] }));
+      const aggResults = aggregateData(filteredData, dim, meas, agg);
+      chartData = aggResults.map(r => ({ label: String(r[dim]), value: r[meas] }));
     } else if (chartConfig.type === 'PieChart') {
-      const agg = {};
-      filteredData.forEach(row => {
-        const cat = row[chartConfig.category];
-        const val = Number(row[chartConfig.value]) || 0;
-        if (!agg[cat]) agg[cat] = 0;
-        agg[cat] += val;
-      });
-      chartData = Object.keys(agg).map(k => ({ id: String(k), label: String(k), value: agg[k] }));
+      const aggResults = aggregateData(filteredData, dim, meas, agg);
+      chartData = aggResults.map(r => ({ id: String(r[dim]), label: String(r[dim]), value: r[meas] }));
     } else if (chartConfig.type === 'ScatterChart') {
-      chartData = filteredData.map(row => ({ x: Number(row[chartConfig.xAxis]) || 0, y: Number(row[chartConfig.yAxis]) || 0, category: 'Data' }));
+      chartData = filteredData.map(row => ({ 
+        x: Number(row[dim]) || 0, 
+        y: Number(row[meas]) || 0, 
+        category: 'Data Point' 
+      }));
     }
 
     const ChartComp = { 'BarChart': BarChart, 'LineChart': LineChart, 'PieChart': PieChart, 'ScatterChart': ScatterChart }[chartConfig.type];
     if (!ChartComp) return null;
 
+    const title = chartConfig.title || `${meas} by ${dim}`;
+
     return (
-      <Card key={chartConfig.type + chartConfig.xAxis} className="flex flex-col h-[450px]">
-        <h3 className="font-semibold text-lg text-(--color-dark) dark:text-white mb-4">
-          {chartConfig.type.replace('Chart', '')} - {chartConfig.yAxis || 'Value'} by {chartConfig.xAxis || chartConfig.category}
-        </h3>
-        <div className="flex-1 relative"><ChartComp data={chartData} /></div>
-        <InsightAccordion insight={`Showing relation between ${chartConfig.xAxis || chartConfig.category} and ${chartConfig.yAxis || chartConfig.value}.`} />
+      <Card key={chartConfig.id || chartConfig.type + dim} className="flex flex-col h-[450px]">
+        <h3 className="font-semibold text-lg text-(--color-dark) dark:text-white mb-4">{title}</h3>
+        <div className="flex-1 relative"><ChartComp data={chartData} orientation={chartConfig.orientation} /></div>
+        <InsightAccordion insight={`Displaying ${chartConfig.type === 'ScatterChart' ? 'distribution of' : 'aggregated values for'} ${meas} by ${dim}.`} />
       </Card>
     );
   };
 
   return (
     <div className="space-y-6">
-      <PageTitle title="Dashboard" />
-      <p className="text-gray-500 dark:text-gray-400">Here's what's happening with your data today.</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <PageTitle title="Dashboard" />
+          <p className="text-gray-500 dark:text-gray-400">Here's what's happening with your data today.</p>
+        </div>
+        {!isDataEmpty && (
+          <Button variant={isEditing ? "primary" : "secondary"} onClick={() => setIsEditing(!isEditing)}>
+            <Settings2 className="w-4 h-4 mr-2" />
+            {isEditing ? "Close Builder" : "Edit Dashboard"}
+          </Button>
+        )}
+      </div>
+
+      {isEditing && !isDataEmpty && (
+        <DashboardBuilderPanel 
+          config={activeConfig} 
+          onSave={handleSaveConfig} 
+          onClose={() => setIsEditing(false)}
+          columns={schema?.columns?.map(c => c.name) || []} 
+        />
+      )}
 
       {loading ? (
         <div className="h-64 flex items-center justify-center"><Spinner /></div>
       ) : isDataEmpty ? (
         <EmptyState title="No Data Available" description="Please go to Data Management and set a dataset as primary to view the dashboard." />
+      ) : (!activeConfig.filters?.length && !activeConfig.kpiCards?.length && !activeConfig.charts?.length && !isEditing) ? (
+        <EmptyState title="Build Your Dashboard" description="Your dashboard is empty. Click 'Edit Dashboard' to add filters, KPI cards, and charts." />
       ) : (
         <>
-          <FilterBar 
-            schemaFilters={schema?.suggestedFilters} 
-            parsedData={parsedData} 
-            filters={filters} 
-            onFilterChange={handleFilterChange} 
-            onReset={() => setFilters({})} 
-          />
+          {activeConfig.filters && activeConfig.filters.length > 0 && (
+            <FilterBar 
+              schemaFilters={activeConfig.filters} 
+              parsedData={parsedData} 
+              filters={filters} 
+              onFilterChange={handleFilterChange} 
+              onReset={() => setFilters({})} 
+            />
+          )}
 
           {kpis.length > 0 && <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">{kpis.map((stat, idx) => <StatCard key={idx} stat={stat} />)}</div>}
-          {schema?.suggestedCharts?.length > 0 && <ChartGrid>{schema.suggestedCharts.map(renderChart)}</ChartGrid>}
+          {activeConfig.charts && activeConfig.charts.length > 0 && <ChartGrid>{activeConfig.charts.map(renderChart)}</ChartGrid>}
         </>
       )}
     </div>

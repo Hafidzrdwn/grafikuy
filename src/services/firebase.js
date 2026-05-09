@@ -55,3 +55,7 @@ export const subscribeToDatasets = (callback) => {
   });
   return unsubscribe;
 };
+
+export const updateDatasetConfig = async (id, config, configKey = 'dashboardConfig') => {
+  await set(ref(db, `datasets/${id}/${configKey}`), config);
+};
