@@ -1,11 +1,19 @@
-/* src/index.css */
 @import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
   --color-light: #F9F7F7;
   --color-muted: #DBE2EF;
   --color-primary: #3F72AF;
   --color-dark: #112D4E;
+}
+
+.dark {
+  --color-light: #112D4E;
+  --color-muted: #1a365d;
+  --color-primary: #DBE2EF;
+  --color-dark: #F9F7F7;
 }
 
 body {
