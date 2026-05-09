@@ -11,7 +11,6 @@ const Modal = ({ isOpen, onClose, title, children }) => {
     };
     if (isOpen) {
       document.addEventListener('keydown', handleEsc);
-      modalRef.current?.focus();
     }
     return () => document.removeEventListener('keydown', handleEsc);
   }, [isOpen, onClose]);

@@ -1,89 +1,178 @@
-import { useContext, useState } from 'react';
+import { useContext, useState, useRef } from 'react';
 import { DataContext } from '../context/DataContext';
+import { ToastContext } from '../components/ui/Toast';
+import { useImportPassword } from '../hooks/useImportPassword';
+import { parseFile } from '../services/fileParser';
+import { uploadFile } from '../services/cloudinary';
+import { saveDataset, deleteDataset } from '../services/firebase';
 import PageTitle from '../components/ui/PageTitle';
 import Button from '../components/ui/Button';
-import EmptyState from '../components/ui/EmptyState';
-import Modal from '../components/ui/Modal';
 import DataCard from '../components/data-management/DataCard';
 import DataTable from '../components/data-management/DataTable';
-import { mockTableRows } from '../utils/mockData';
-import { useToast } from '../hooks/useToast';
+import Modal from '../components/ui/Modal';
+import Spinner from '../components/ui/Spinner';
+import { Upload, AlertCircle, Unlock, ArrowLeft } from 'lucide-react';
 
 const DataManagementPage = () => {
-  const { datasets, setDatasets, selectedDataset, setSelectedDataset } = useContext(DataContext);
-  const [isImportOpen, setIsImportOpen] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState(null);
-  const [viewingDataset, setViewingDataset] = useState(null);
-  const { addToast } = useToast();
+  const { datasets, selectedDataset, parsedData, schema, setSelectedDatasetId, loading, error } = useContext(DataContext);
+  const { addToast } = useContext(ToastContext);
+  const { isAuthorized, promptPassword, verifyPassword, error: passwordError, checkAccess, setPromptPassword } = useImportPassword();
+  
+  const [isUploading, setIsUploading] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [viewedData, setViewedData] = useState(null);
+  const fileInputRef = useRef(null);
 
-  const handleSetPrimary = (dataset) => {
-    setSelectedDataset(dataset);
-    addToast({ type: 'success', message: `${dataset.name} set as primary dataset.` });
+  const handleImportClick = () => {
+    if (checkAccess()) {
+      fileInputRef.current?.click();
+    }
   };
 
-  const handleDelete = (dataset) => {
-    setDatasets(prev => prev.filter(d => d.id !== dataset.id));
-    if (selectedDataset?.id === dataset.id) setSelectedDataset(null);
-    setDeleteConfirm(null);
-    addToast({ type: 'info', message: 'Dataset deleted successfully.' });
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault();
+    const success = await verifyPassword(passwordInput);
+    if (success) {
+      setPasswordInput('');
+      fileInputRef.current?.click();
+    }
   };
 
-  if (viewingDataset) {
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    setIsUploading(true);
+    try {
+      const { rows, columns, rowCount } = await parseFile(file);
+      const blob = new Blob([JSON.stringify(rows)], { type: 'application/json' });
+      const uploadResult = await uploadFile(new File([blob], file.name + '.json', { type: 'application/json' }));
+      
+      const datasetObj = {
+        name: file.name.split('.')[0],
+        fileName: file.name,
+        fileUrl: uploadResult.secure_url,
+        uploadedAt: new Date().toLocaleDateString(),
+        rowCount,
+        columns
+      };
+      
+      const newId = await saveDataset(datasetObj);
+      if (datasets.length === 0) {
+        await setSelectedDatasetId(newId);
+      }
+      
+      addToast({ type: 'success', message: 'Dataset imported successfully!' });
+    } catch (err) {
+      addToast({ type: 'error', message: err.message || 'Failed to import dataset' });
+    } finally {
+      setIsUploading(false);
+      e.target.value = null;
+    }
+  };
+
+  const handleDelete = async (dataset) => {
+    if (window.confirm(`Are you sure you want to delete ${dataset.name}?`)) {
+      try {
+        await deleteDataset(dataset.id);
+        if (selectedDataset?.id === dataset.id) {
+          await setSelectedDatasetId(null);
+        }
+        addToast({ type: 'success', message: 'Dataset deleted' });
+      } catch (err) {
+        addToast({ type: 'error', message: 'Failed to delete dataset' });
+      }
+    }
+  };
+
+  const handleSetPrimary = async (dataset) => {
+    try {
+      await setSelectedDatasetId(dataset.id);
+      addToast({ type: 'success', message: `${dataset.name} set as primary dataset` });
+    } catch (err) {
+      addToast({ type: 'error', message: 'Failed to set primary dataset' });
+    }
+  };
+
+  const handleView = (dataset) => {
+    if (dataset.id === selectedDataset?.id) {
+      setViewedData({ name: dataset.name, rows: parsedData, columns: schema?.columns.map(c => c.name) || [] });
+    } else {
+      addToast({ type: 'info', message: 'Set as primary first to view data' });
+    }
+  };
+
+  const isInitialLoading = loading && datasets.length === 0;
+
+  if (viewedData && !isInitialLoading) {
     return (
-      <>
+      <div className="space-y-6">
+        <PageTitle title={`View Data: ${viewedData.name}`} />
         <div className="flex items-center gap-4 mb-6">
-          <Button variant="ghost" size="sm" onClick={() => setViewingDataset(null)}>
-            ← Back
+          <Button variant="secondary" onClick={() => setViewedData(null)}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Datasets
           </Button>
-          <h1 className="text-xl font-bold dark:text-white">{viewingDataset.name} Data</h1>
         </div>
-        <DataTable columns={viewingDataset.columns || []} data={mockTableRows} />
-      </>
+        <DataTable data={viewedData.rows} columns={viewedData.columns} />
+      </div>
     );
   }
 
   return (
-    <>
-      <div className="flex justify-between items-center mb-6">
-        <PageTitle title="Data Management" />
-        <Button onClick={() => setIsImportOpen(true)}>Import Data</Button>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <PageTitle title="Data Management" />
+          <p className="text-gray-500 dark:text-gray-400">Upload, manage, and inspect your datasets.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          {isAuthorized && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800">
+              <Unlock className="w-4 h-4" />
+              Admin Verified
+            </span>
+          )}
+          <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".csv, .xls, .xlsx" />
+          <Button onClick={handleImportClick} loading={isUploading}><Upload className="w-4 h-4 mr-2" /> Import Data</Button>
+        </div>
       </div>
 
-      {datasets.length === 0 ? (
-        <EmptyState title="No Datasets" description="You haven't uploaded any data yet." action={{ label: 'Import Data', onClick: () => setIsImportOpen(true) }} />
+      {error && <div className="p-4 bg-red-50 text-red-600 rounded-lg flex items-center"><AlertCircle className="w-5 h-5 mr-2" />{error.message}</div>}
+
+      {isInitialLoading ? (
+        <div className="h-64 flex items-center justify-center"><Spinner /></div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {datasets.map(dataset => (
-            <DataCard 
-              key={dataset.id}
-              dataset={dataset}
-              isSelected={selectedDataset?.id === dataset.id}
-              onSelect={handleSetPrimary}
-              onView={setViewingDataset}
-              onDelete={setDeleteConfirm}
-            />
+            <DataCard key={dataset.id} dataset={dataset} isSelected={selectedDataset?.id === dataset.id} onSelect={handleSetPrimary} onView={handleView} onDelete={handleDelete} />
           ))}
+          {datasets.length === 0 && !isUploading && (
+            <div className="col-span-full p-8 text-center bg-white dark:bg-[#112D4E] rounded-xl border border-dashed border-(--color-muted) dark:border-[#3F72AF]/50">
+              <p className="text-gray-500 dark:text-gray-400">No datasets found. Import one to get started.</p>
+            </div>
+          )}
         </div>
       )}
 
-      <Modal isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} title="Import Data">
-        <div className="p-4 flex justify-center text-gray-500 dark:text-gray-400 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
-          Upload feature will be implemented in Step 3.
-        </div>
-        <div className="mt-6 flex justify-end">
-          <Button variant="secondary" onClick={() => setIsImportOpen(false)}>Close</Button>
-        </div>
+      <Modal isOpen={promptPassword} onClose={() => {
+        setPromptPassword(false)
+        setPasswordInput('')
+      }} title="Security Authorization">
+        <form onSubmit={handlePasswordSubmit} className="space-y-4">
+          <p className="text-sm text-gray-600 dark:text-gray-300">Enter system password to authorize import.</p>
+          <input type="password" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} className="w-full px-4 py-2 border text-(--color-dark) dark:text-white rounded-lg focus:ring-2 focus:ring-(--color-primary) dark:bg-gray-800 dark:border-gray-700" required />
+          {passwordError && <p className="text-sm text-red-500">{passwordError}</p>}
+          <div className="flex justify-end gap-3 pt-4">
+            <Button type="button" variant="ghost" onClick={() => {
+              setPromptPassword(false)
+              setPasswordInput('')
+            }}>Cancel</Button>
+            <Button type="submit">Verify</Button>
+          </div>
+        </form>
       </Modal>
-
-      <Modal isOpen={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} title="Confirm Deletion">
-        <p className="mb-6 text-(--color-dark)">Are you sure you want to delete <strong>{deleteConfirm?.name}</strong>? This action cannot be undone.</p>
-        <div className="flex justify-end gap-3">
-          <Button variant="secondary" onClick={() => setDeleteConfirm(null)}>Cancel</Button>
-          <Button variant="danger" onClick={() => handleDelete(deleteConfirm)}>Delete</Button>
-        </div>
-      </Modal>
-    </>
+    </div>
   );
 };
-
 export default DataManagementPage;

@@ -6,7 +6,7 @@ const PageTitle = ({ title }) => {
   }, [title]);
 
   return (
-    <h1 className="text-2xl font-bold text-(--color-dark) dark:text-white mb-6">
+    <h1 className="text-2xl font-bold text-(--color-dark) dark:text-white mb-3">
       {title}
     </h1>
   );

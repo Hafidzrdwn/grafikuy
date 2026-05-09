@@ -1,3 +1,57 @@
-// src/services/firebase.js
+import { initializeApp } from "firebase/app";
+import { getDatabase, ref, push, remove, set, get, onValue } from "firebase/database";
 
-export {}
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+export const getDatasets = async () => {
+  const snapshot = await get(ref(db, 'datasets'));
+  if (snapshot.exists()) {
+    const data = snapshot.val();
+    return Object.keys(data).map(key => ({ id: key, ...data[key] }));
+  }
+  return [];
+};
+
+export const saveDataset = async (datasetObj) => {
+  const newRef = push(ref(db, 'datasets'));
+  await set(newRef, datasetObj);
+  return newRef.key;
+};
+
+export const deleteDataset = async (id) => {
+  await remove(ref(db, `datasets/${id}`));
+};
+
+export const setSelectedDatasetId = async (id) => {
+  await set(ref(db, 'config/selectedDatasetId'), id);
+};
+
+export const getSelectedDatasetId = async () => {
+  const snapshot = await get(ref(db, 'config/selectedDatasetId'));
+  return snapshot.exists() ? snapshot.val() : null;
+};
+
+export const subscribeToDatasets = (callback) => {
+  const datasetsRef = ref(db, 'datasets');
+  const unsubscribe = onValue(datasetsRef, (snapshot) => {
+    if (snapshot.exists()) {
+      const data = snapshot.val();
+      const arr = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+      callback(arr.reverse());
+    } else {
+      callback([]);
+    }
+  });
+  return unsubscribe;
+};
