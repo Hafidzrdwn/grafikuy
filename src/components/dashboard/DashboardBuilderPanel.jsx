@@ -78,7 +78,7 @@ const DashboardBuilderPanel = ({ config, onSave, columns, schema, onClose }) => 
 
   return (
     <Card className="mb-6 border-2 border-(--color-primary) shadow-lg bg-gray-50 dark:bg-[#112D4E]/50">
-      <div className="flex items-center justify-between mb-4 border-b pb-4 dark:border-[#3F72AF]/30">
+      <div className="flex lg:flex-row flex-col gap-y-4 items-center justify-between mb-4 border-b pb-4 dark:border-[#3F72AF]/30">
         <h2 className="text-xl font-bold flex items-center gap-2 text-(--color-dark) dark:text-white">
           <Settings className="w-5 h-5 text-(--color-primary)" />
           Dashboard Builder
@@ -157,19 +157,19 @@ const DashboardBuilderPanel = ({ config, onSave, columns, schema, onClose }) => 
                         </select>
                       </div>
                     </div>
-                    <div className="flex gap-4 p-2 bg-gray-50 dark:bg-gray-900 rounded border border-dashed dark:border-gray-700">
-                      <div className="flex-1">
+                    <div className="flex flex-wrap gap-4 p-2 bg-gray-50 dark:bg-gray-900 rounded border border-dashed dark:border-gray-700">
+                      <div className="md:flex-1">
                         <label className="text-xs text-gray-500 block mb-1">Nominal Prefix (Optional)</label>
                         <input type="text" placeholder="e.g. $, Rp" className="w-full p-1.5 border rounded text-xs dark:bg-gray-700 dark:text-white" value={kpi.prefix || ''} onChange={(e) => updateItem('kpiCards', i, 'prefix', e.target.value)} />
                       </div>
-                      <div className="flex-1">
+                      <div className="md:flex-1">
                         <label className="text-xs text-gray-500 block mb-1">Number Format</label>
                         <select className="w-full p-1.5 border rounded text-xs dark:bg-gray-700 dark:text-white" value={kpi.format || 'commas'} onChange={(e) => updateItem('kpiCards', i, 'format', e.target.value)}>
                           <option value="commas">Commas (1,000)</option>
                           <option value="raw">Raw (1000)</option>
                         </select>
                       </div>
-                      <div className="flex-1">
+                      <div className="md:flex-1">
                         <label className="text-xs text-gray-500 block mb-1">Decimals</label>
                         <select className="w-full p-1.5 border rounded text-xs dark:bg-gray-700 dark:text-white" value={kpi.decimals ?? 0} onChange={(e) => updateItem('kpiCards', i, 'decimals', Number(e.target.value))}>
                           <option value={0}>0 (Whole Number)</option>
@@ -216,15 +216,15 @@ const DashboardBuilderPanel = ({ config, onSave, columns, schema, onClose }) => 
                       </div>
                     )}
                   </div>
-                  <div className="flex gap-4 p-2 bg-gray-50 dark:bg-gray-900 rounded border border-dashed dark:border-gray-700">
-                    <div className="flex-1">
+                  <div className="flex flex-wrap gap-4 p-2 bg-gray-50 dark:bg-gray-900 rounded border border-dashed dark:border-gray-700">
+                    <div className="md:flex-1">
                       <label className="text-xs text-gray-500 block mb-1">{chart.type === 'ScatterChart' ? 'X-Axis (Measure)' : 'Dimension (Group By)'}</label>
                       <select className="w-full p-1.5 border rounded text-sm dark:bg-gray-700 dark:text-white" value={chart.dimension || chart.xAxis || chart.category} onChange={(e) => updateItem('charts', i, 'dimension', e.target.value)}>
                         {columns.map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </div>
                     {chart.type !== 'ScatterChart' && getColumnType(chart.dimension) === 'date' && (
-                      <div className="flex-1">
+                      <div className="md:flex-1">
                         <label className="text-xs text-gray-500 block mb-1">Date Format</label>
                         <select className="w-full p-1.5 border rounded text-sm dark:bg-gray-700 dark:text-white" value={chart.dateFormat || 'auto'} onChange={(e) => updateItem('charts', i, 'dateFormat', e.target.value)}>
                           <option value="auto">Auto (Raw)</option>
@@ -236,14 +236,14 @@ const DashboardBuilderPanel = ({ config, onSave, columns, schema, onClose }) => 
                         </select>
                       </div>
                     )}
-                    <div className="flex-1">
+                    <div className="md:flex-1">
                       <label className="text-xs text-gray-500 block mb-1">{chart.type === 'ScatterChart' ? 'Y-Axis (Measure)' : 'Measure (Value)'}</label>
                       <select className="w-full p-1.5 border rounded text-sm dark:bg-gray-700 dark:text-white" value={chart.measure || chart.yAxis || chart.value} onChange={(e) => updateItem('charts', i, 'measure', e.target.value)}>
                         {columns.map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </div>
                     {chart.type !== 'ScatterChart' && (
-                      <div className="flex-1">
+                      <div className="md:flex-1">
                         <label className="text-xs text-gray-500 block mb-1">Aggregation</label>
                         <select className="w-full p-1.5 border rounded text-sm dark:bg-gray-700 dark:text-white" value={chart.aggType || 'sum'} onChange={(e) => updateItem('charts', i, 'aggType', e.target.value)}>
                           <option value="sum">Sum</option>
@@ -255,21 +255,21 @@ const DashboardBuilderPanel = ({ config, onSave, columns, schema, onClose }) => 
                     )}
                     {chart.type === 'ScatterChart' && (
                       <>
-                        <div className="flex-1">
+                        <div className="lg:flex-1">
                           <label className="text-xs text-gray-500 block mb-1">Details / Points (Dimension)</label>
                           <select className="w-full p-1.5 border rounded text-sm dark:bg-gray-700 dark:text-white" value={chart.detailDim || ''} onChange={(e) => updateItem('charts', i, 'detailDim', e.target.value)}>
                             <option value="">None (Raw Points)</option>
                             {columns.map(c => <option key={c} value={c}>{c}</option>)}
                           </select>
                         </div>
-                        <div className="flex-1">
+                        <div className="lg:flex-1">
                           <label className="text-xs text-gray-500 block mb-1">X Aggregation</label>
                           <select className="w-full p-1.5 border rounded text-sm dark:bg-gray-700 dark:text-white" value={chart.xAgg || 'avg'} onChange={(e) => updateItem('charts', i, 'xAgg', e.target.value)}>
                             <option value="sum">Sum</option>
                             <option value="avg">Average</option>
                           </select>
                         </div>
-                        <div className="flex-1">
+                        <div className="lg:flex-1">
                           <label className="text-xs text-gray-500 block mb-1">Y Aggregation</label>
                           <select className="w-full p-1.5 border rounded text-sm dark:bg-gray-700 dark:text-white" value={chart.yAgg || 'sum'} onChange={(e) => updateItem('charts', i, 'yAgg', e.target.value)}>
                             <option value="sum">Sum</option>

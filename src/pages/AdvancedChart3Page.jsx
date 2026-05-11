@@ -153,7 +153,7 @@ const AdvancedChart3Page = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between md:items-center md:flex-row flex-col gap-y-4">
         <div>
           <PageTitle title="Force Directed Graph" />
           <p className="text-gray-500 dark:text-gray-400">Visualize complex network relationships using D3.js.</p>

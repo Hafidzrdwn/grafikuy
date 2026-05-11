@@ -145,8 +145,8 @@ const DataManagementPage = () => {
   if (viewedData && !isInitialLoading) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
+        <div className="flex lg:items-center justify-between mb-6 lg:flex-row flex-col gap-y-4">
+          <div className="flex lg:items-center items-start gap-4 lg:flex-row flex-col">
             <Button variant="secondary" onClick={() => setViewedData(null)}>
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back
@@ -173,7 +173,7 @@ const DataManagementPage = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between lg:items-center lg:flex-row flex-col gap-y-4">
         <div>
           <PageTitle title="Data Management" />
           <p className="text-gray-500 dark:text-gray-400">Upload, manage, and inspect your datasets.</p>

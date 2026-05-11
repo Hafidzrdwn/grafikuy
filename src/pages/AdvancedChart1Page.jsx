@@ -188,7 +188,7 @@ const AdvancedChart1Page = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between md:items-center md:flex-row flex-col gap-y-4">
         <div>
           <PageTitle title="Radial Tree Diagram" />
           <p className="text-gray-500 dark:text-gray-400">Visualize hierarchical structure radiating outward using D3.js.</p>

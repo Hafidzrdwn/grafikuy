@@ -152,7 +152,7 @@ const DashboardPage = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex md:flex-row justify-between md:items-center items-stretch flex-col gap-y-4">
         <div>
           <PageTitle title="Dashboard" />
           <p className="text-gray-500 dark:text-gray-400">Here's what's happening with your data today.</p>
