@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, push, remove, set, get, onValue } from "firebase/database";
+import { getDatabase, ref, push, remove, set, get, onValue, runTransaction } from "firebase/database";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -58,4 +58,23 @@ export const subscribeToDatasets = (callback) => {
 
 export const updateDatasetConfig = async (id, config, configKey = 'dashboardConfig') => {
   await set(ref(db, `datasets/${id}/${configKey}`), config);
+};
+
+export const incrementPageView = async (pageKey) => {
+  const pageRef = ref(db, `page_views/${pageKey}`);
+  try {
+    await runTransaction(pageRef, (currentViews) => {
+      return (currentViews || 0) + 1;
+    });
+  } catch (error) {
+    console.error("Gagal menambah jumlah tayangan:", error);
+  }
+};
+
+export const subscribeToPageViews = (pageKey, callback) => {
+  const pageRef = ref(db, `page_views/${pageKey}`);
+  const unsubscribe = onValue(pageRef, (snapshot) => {
+    callback(snapshot.val() || 0);
+  });
+  return unsubscribe;
 };
