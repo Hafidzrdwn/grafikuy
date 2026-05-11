@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
-import Card from '../ui/Card';
-import Pagination from '../ui/Pagination';
+import Card from '@/components/ui/Card';
+import Pagination from '@/components/ui/Pagination';
 import { Type, Hash, Calendar, DollarSign, Tag, ChevronDown } from 'lucide-react';
 
 const getTypeIcon = (type) => {

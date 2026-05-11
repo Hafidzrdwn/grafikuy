@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import Card from '../ui/Card';
-import Button from '../ui/Button';
+import Card from '@/components/ui/Card';
+import Button from '@/components/ui/Button';
 import { Plus, Trash2, Settings, Save } from 'lucide-react';
 
 const DashboardBuilderPanel = ({ config, onSave, columns, schema, onClose }) => {

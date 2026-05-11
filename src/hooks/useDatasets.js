@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { subscribeToDatasets } from '../services/firebase';
+import { subscribeToDatasets } from '@/services/firebase';
 
 export const useDatasets = () => {
   const [datasets, setDatasets] = useState([]);

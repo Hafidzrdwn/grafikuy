@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { isPasswordSaved, checkPassword, savePasswordToStorage } from '../services/passwordService';
+import { isPasswordSaved, checkPassword, savePasswordToStorage } from '@/services/passwordService';
 
 export const useImportPassword = () => {
   const [isAuthorized, setIsAuthorized] = useState(isPasswordSaved());

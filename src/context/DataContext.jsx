@@ -1,7 +1,7 @@
 import { createContext } from 'react';
-import { useDatasets } from '../hooks/useDatasets';
-import { useSelectedData } from '../hooks/useSelectedData';
-import { setSelectedDatasetId as setFirebaseSelectedDatasetId } from '../services/firebase';
+import { useDatasets } from '@/hooks/useDatasets';
+import { useSelectedData } from '@/hooks/useSelectedData';
+import { setSelectedDatasetId as setFirebaseSelectedDatasetId } from '@/services/firebase';
 
 export const DataContext = createContext();
 

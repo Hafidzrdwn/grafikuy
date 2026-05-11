@@ -1,17 +1,17 @@
 import { useContext, useState, useRef, useMemo } from 'react';
-import { DataContext } from '../context/DataContext';
-import { ToastContext } from '../components/ui/Toast';
-import { useImportPassword } from '../hooks/useImportPassword';
-import { parseFile } from '../services/fileParser';
-import { uploadFile } from '../services/cloudinary';
-import { saveDataset, deleteDataset } from '../services/firebase';
-import { transformDataset } from '../services/dataAnalyzer';
-import PageTitle from '../components/ui/PageTitle';
-import Button from '../components/ui/Button';
-import DataCard from '../components/data-management/DataCard';
-import DataTable from '../components/data-management/DataTable';
-import Modal from '../components/ui/Modal';
-import Spinner from '../components/ui/Spinner';
+import { DataContext } from '@/context/DataContext';
+import { ToastContext } from '@/components/ui/Toast';
+import { useImportPassword } from '@/hooks/useImportPassword';
+import { parseFile } from '@/services/fileParser';
+import { uploadFile } from '@/services/cloudinary';
+import { saveDataset, deleteDataset } from '@/services/firebase';
+import { transformDataset } from '@/services/dataAnalyzer';
+import PageTitle from '@/components/ui/PageTitle';
+import Button from '@/components/ui/Button';
+import DataCard from '@/components/data-management/DataCard';
+import DataTable from '@/components/data-management/DataTable';
+import Modal from '@/components/ui/Modal';
+import Spinner from '@/components/ui/Spinner';
 import { Upload, AlertCircle, Unlock, ArrowLeft, Save } from 'lucide-react';
 
 const DataManagementPage = () => {

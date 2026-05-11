@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getDatabase, ref, onValue } from 'firebase/database';
-import { analyzeSchema } from '../services/dataAnalyzer';
+import { analyzeSchema } from '@/services/dataAnalyzer';
 
 export const useSelectedData = (datasets) => {
   const [selectedDataset, setSelectedDataset] = useState(null);

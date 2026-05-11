@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { incrementPageView, subscribeToPageViews } from '../services/firebase';
+import { incrementPageView, subscribeToPageViews } from '@/services/firebase';
 
 export const usePageViews = (pageKey) => {
   const [views, setViews] = useState(null);

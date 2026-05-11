@@ -1,17 +1,17 @@
 import { useContext, useEffect, useState, useRef } from 'react';
-import { DataContext } from '../context/DataContext';
+import { DataContext } from '@/context/DataContext';
 import * as d3 from 'd3';
-import PageTitle from '../components/ui/PageTitle';
-import Card from '../components/ui/Card';
-import InsightAccordion from '../components/dashboard/InsightAccordion';
-import EmptyState from '../components/ui/EmptyState';
-import Spinner from '../components/ui/Spinner';
-import AdvancedBuilderPanel from '../components/dashboard/AdvancedBuilderPanel';
-import FilterBar from '../components/dashboard/FilterBar';
-import Button from '../components/ui/Button';
+import PageTitle from '@/components/ui/PageTitle';
+import Card from '@/components/ui/Card';
+import InsightAccordion from '@/components/dashboard/InsightAccordion';
+import EmptyState from '@/components/ui/EmptyState';
+import Spinner from '@/components/ui/Spinner';
+import AdvancedBuilderPanel from '@/components/dashboard/AdvancedBuilderPanel';
+import FilterBar from '@/components/dashboard/FilterBar';
+import Button from '@/components/ui/Button';
 import { Settings2 } from 'lucide-react';
-import { updateDatasetConfig } from '../services/firebase';
-import { flatToGraph, applyFilters } from '../services/aggregationEngine';
+import { updateDatasetConfig } from '@/services/firebase';
+import { flatToGraph, applyFilters } from '@/services/aggregationEngine';
 
 const AdvancedChart1Page = () => {
   const { selectedDataset, parsedData, schema, loading } = useContext(DataContext);

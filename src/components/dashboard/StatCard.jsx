@@ -1,4 +1,4 @@
-import Card from '../ui/Card';
+import Card from '@/components/ui/Card';
 
 const StatCard = ({ stat }) => {
   return (
