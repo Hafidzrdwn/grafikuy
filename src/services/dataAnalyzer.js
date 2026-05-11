@@ -108,7 +108,7 @@ export const transformDataset = (rawRows, schemaConfig) => {
             break;
         }
       } catch (e) {
-        // Fallback to original
+        newRow[col] = val;
       }
     }
     return newRow;

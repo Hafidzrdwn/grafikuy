@@ -1,4 +1,3 @@
-// src/components/ui/Toast.jsx
 import { createContext, useState, useCallback } from 'react';
 import { X } from 'lucide-react';
 
@@ -40,7 +39,7 @@ const ToastItem = ({ toast, onClose }) => {
   };
 
   return (
-    <div className={`px-4 py-3 rounded-lg shadow-lg flex items-center justify-between min-w-[250px] ${types[toast.type]} transition-all`}>
+    <div className={`px-4 py-3 rounded-lg shadow-lg flex items-center justify-between min-w-62.5 ${types[toast.type]} transition-all`}>
       <span className="text-sm font-medium">{toast.message}</span>
       <button onClick={onClose} className="ml-4 opacity-80 hover:opacity-100">
         <X className="w-4 h-4" />

@@ -84,14 +84,11 @@ const DashboardPage = () => {
     const dim = chartConfig.dimension || chartConfig.xAxis || chartConfig.category;
     const meas = chartConfig.measure || chartConfig.yAxis || chartConfig.value;
     const agg = chartConfig.aggType || 'sum';
-    const isHorizontal = chartConfig.orientation === 'horizontal';
-
     const dateFormat = chartConfig.dateFormat;
 
     if (chartConfig.type === 'BarChart' || chartConfig.type === 'LineChart') {
       let aggResults = aggregateData(filteredData, dim, meas, agg);
       if (dateFormat && dateFormat !== 'auto') {
-        // Re-aggregate with formatted dates
         const formatted = filteredData.map(r => ({ ...r, [`__fmt_${dim}`]: formatDateValue(r[dim], dateFormat) }));
         const fmtDim = `__fmt_${dim}`;
         aggResults = aggregateData(formatted, fmtDim, meas, agg);
@@ -112,7 +109,6 @@ const DashboardPage = () => {
     } else if (chartConfig.type === 'ScatterChart') {
       const detailDim = chartConfig.detailDim;
       if (detailDim) {
-        // Aggregate X and Y per detail dimension category
         const grouped = {};
         filteredData.forEach(row => {
           const cat = String(row[detailDim] || '');
@@ -146,7 +142,7 @@ const DashboardPage = () => {
     const title = chartConfig.title || `${meas} by ${dim}`;
 
     return (
-      <Card key={chartConfig.id || chartConfig.type + dim} className="flex flex-col h-[450px]">
+      <Card key={chartConfig.id || chartConfig.type + dim} className="flex flex-col h-112.5">
         <h3 className="font-semibold text-lg text-(--color-dark) dark:text-white mb-4">{title}</h3>
         <div className="flex-1 relative"><ChartComp data={chartData} orientation={chartConfig.orientation} /></div>
         <InsightAccordion insight={`Displaying ${chartConfig.type === 'ScatterChart' ? 'distribution of' : 'aggregated values for'} ${meas} by ${dim}.`} />

@@ -83,7 +83,6 @@ const AdvancedChart2Page = () => {
       .style('box-shadow', '0 4px 12px rgb(0 0 0 / 0.15)')
       .style('color', '#333');
 
-    // Country name alias lookup for matching dataset names to GeoJSON names
     const countryAliases = {
       'United States': 'United States of America',
       'USA': 'United States of America',
@@ -100,7 +99,6 @@ const AdvancedChart2Page = () => {
       'Burma': 'Myanmar',
     };
 
-    // Build data map with aggregation
     const dataMap = new Map();
     filteredData.forEach(d => {
       const loc = String(d[config.geoCol]).trim();
@@ -131,23 +129,17 @@ const AdvancedChart2Page = () => {
 
     const aggLabel = config.aggType === 'avg' ? 'Average' : config.aggType === 'count' ? 'Count' : 'Total';
 
-    // Build a lookup that resolves both original name and alias
     const resolveCountryValue = (geoName) => {
-      // Direct match
       if (aggMap.has(geoName)) return aggMap.get(geoName);
-      // Reverse alias: check if any dataset name maps to this geoName
       for (const [dataName, geoAlias] of Object.entries(countryAliases)) {
         if (geoAlias === geoName && aggMap.has(dataName)) return aggMap.get(dataName);
       }
-      // Forward alias: check if geoName itself is a key that maps to a dataset name
       if (countryAliases[geoName] && aggMap.has(countryAliases[geoName])) return aggMap.get(countryAliases[geoName]);
       return undefined;
     };
 
-    // Detect how many data entries match country names
     let matchCount = 0;
     for (const [name] of aggMap.entries()) {
-      // Check direct match or alias
       let matched = false;
       for (const feat of countries.features) {
         if (feat.properties.name === name) { matched = true; break; }
@@ -156,7 +148,6 @@ const AdvancedChart2Page = () => {
         if (countryAliases[name]) matched = true;
       }
       if (!matched) {
-        // Reverse: check if any alias value matches a geoJSON name
         for (const [, geoAlias] of Object.entries(countryAliases)) {
           if (geoAlias === name) { matched = true; break; }
         }
@@ -198,14 +189,12 @@ const AdvancedChart2Page = () => {
         tooltip.transition().duration(400).style('opacity', 0);
       });
 
-    // If data is NOT country-level (region/city), render bubble circles
     if (!isChoropleth && totalEntries > 0) {
       const bubbleData = Array.from(aggMap.entries()).map(([name, val]) => ({ name, value: val }));
       const radiusScale = d3.scaleSqrt()
         .domain([0, d3.max(bubbleData, d => d.value)])
         .range([4, 35]);
 
-      // Distribute bubbles evenly across the map
       const cols = Math.ceil(Math.sqrt(bubbleData.length));
       const cellW = (width - 100) / cols;
       const cellH = (height - 60) / Math.ceil(bubbleData.length / cols);
@@ -238,7 +227,6 @@ const AdvancedChart2Page = () => {
           tooltip.transition().duration(400).style('opacity', 0);
         });
 
-      // Labels for bubbles
       g.selectAll('text.bubble-label')
         .data(bubbleData)
         .join('text')
@@ -301,9 +289,9 @@ const AdvancedChart2Page = () => {
         <EmptyState title="Build Your Advanced Chart" description="Your chart is empty. Click 'Edit Chart' to map geographical data." />
       ) : (
         <>
-          <Card className="w-full min-h-[500px] p-0 relative overflow-hidden">
+          <Card className="w-full min-h-125 p-0 relative overflow-hidden">
             <div className="relative w-full h-full">
-              <svg ref={svgRef} className="w-full h-full max-h-[700px]" />
+              <svg ref={svgRef} className="w-full h-full max-h-175" />
               <div ref={tooltipRef} className="dark:text-gray-800" />
             </div>
           </Card>

@@ -1,4 +1,3 @@
-// src/hooks/useSelectedData.js
 import { useState, useEffect } from 'react';
 import { getDatabase, ref, onValue } from 'firebase/database';
 import { analyzeSchema } from '../services/dataAnalyzer';

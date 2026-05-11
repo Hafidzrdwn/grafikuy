@@ -87,7 +87,6 @@ const AdvancedChart3Page = () => {
     const levels = config.dimensions || [];
     const colors = ['#3F72AF', '#112D4E', '#80C4E9', '#96C9F4', '#5A96E3'];
 
-    // Clone data for simulation
     const nodes = graphData.nodes.map(n => ({ ...n }));
     const links = graphData.links.map(l => ({ source: l.source, target: l.target, value: l.value }));
 
@@ -196,9 +195,9 @@ const AdvancedChart3Page = () => {
         <EmptyState title="Build Your Advanced Chart" description="Your chart is empty. Click 'Edit Chart' to define hierarchy levels." />
       ) : (
         <>
-          <Card className="w-full min-h-[500px] p-0 relative">
+          <Card className="w-full min-h-125 p-0 relative">
             <div className="relative w-full h-full">
-              <svg ref={svgRef} className="w-full h-full min-h-[600px]" />
+              <svg ref={svgRef} className="w-full h-full min-h-150" />
               <div ref={tooltipRef} className="dark:text-gray-800" />
             </div>
           </Card>

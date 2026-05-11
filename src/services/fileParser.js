@@ -1,4 +1,3 @@
-// src/services/fileParser.js
 import * as XLSX from 'xlsx';
 
 export const parseFile = async (file) => {
@@ -12,10 +11,9 @@ export const parseFile = async (file) => {
         const data = e.target.result;
         let rows = [];
 
-        // Configure XLSX to safely handle cell dates and parse them correctly
         const readOptions = { 
           cellDates: true, 
-          dateNF: 'yyyy-mm-dd', // format output string internally before JS Date conversion
+          dateNF: 'yyyy-mm-dd', 
         };
 
         if (file.name.endsWith('.csv')) {
@@ -27,7 +25,6 @@ export const parseFile = async (file) => {
           const workbook = XLSX.read(data, { type: 'array', ...readOptions });
           const firstSheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[firstSheetName];
-          // use raw: false so it applies the dateNF format instead of keeping raw epoch 44929
           rows = XLSX.utils.sheet_to_json(worksheet, { defval: "", raw: false });
         } else {
           return reject(new Error("Unsupported file type. Use .csv or .xlsx"));
@@ -38,11 +35,10 @@ export const parseFile = async (file) => {
         }
 
         const columns = Object.keys(rows[0]);
-        // Extract up to 50 rows for preview sampling
-        const previewRows = rows.slice(0, 50);
+        const previewRows = rows.slice(0, 100);
 
         resolve({
-          rows, // all rows (could be 10k)
+          rows,
           previewRows,
           columns,
           rowCount: rows.length

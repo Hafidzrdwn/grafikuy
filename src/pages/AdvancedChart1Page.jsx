@@ -50,7 +50,6 @@ const AdvancedChart1Page = () => {
   const handleFilterChange = (key, value) => setFilters(prev => ({ ...prev, [key]: value }));
   const filteredData = parsedData ? applyFilters(parsedData, filters) : [];
 
-  // Build tree from graph
   const buildTree = (graph) => {
     if (!graph.nodes || graph.nodes.length === 0) return { name: 'Root', children: [], value: 0 };
     const targetSet = new Set(graph.links.map(l => l.target));
@@ -70,7 +69,6 @@ const AdvancedChart1Page = () => {
       });
     };
 
-    // Recursively sum all values in a subtree
     const sumTreeValues = (node) => {
       if (!node.children || node.children.length === 0) return node.value || 0;
       let total = node.value || 0;
@@ -87,7 +85,6 @@ const AdvancedChart1Page = () => {
       }))
     };
 
-    // Calculate root total from all children
     treeData.value = sumTreeValues(treeData);
 
     if (treeData.children.length === 1) {
@@ -134,7 +131,6 @@ const AdvancedChart1Page = () => {
     const g = svg.append('g');
     svg.call(d3.zoom().scaleExtent([0.3, 5]).on('zoom', e => g.attr('transform', e.transform)));
 
-    // Links
     g.append('g')
       .attr('fill', 'none')
       .attr('stroke', '#3F72AF')
@@ -145,7 +141,6 @@ const AdvancedChart1Page = () => {
       .join('path')
       .attr('d', d3.linkRadial().angle(d => d.x).radius(d => d.y));
 
-    // Nodes
     const node = g.append('g')
       .attr('stroke-linejoin', 'round')
       .attr('stroke-width', 3)
@@ -174,7 +169,6 @@ const AdvancedChart1Page = () => {
         tooltip.transition().duration(400).style('opacity', 0);
       });
 
-    // Labels with value
     node.append('text')
       .attr('dy', '0.31em')
       .attr('x', d => d.x < Math.PI === !d.children ? 6 : -6)
@@ -236,9 +230,9 @@ const AdvancedChart1Page = () => {
         <EmptyState title="Build Your Advanced Chart" description="Your chart is empty. Click 'Edit Chart' to define hierarchy levels." />
       ) : (
         <>
-          <Card className="w-full min-h-[700px] p-0 relative overflow-hidden bg-gray-50 dark:bg-gray-900 border-2 dark:border-[#3F72AF]/30">
+          <Card className="w-full min-h-175 p-0 relative overflow-hidden bg-gray-50 dark:bg-gray-900 border-2 dark:border-[#3F72AF]/30">
             <div className="relative w-full h-full">
-              <svg ref={svgRef} className="w-full h-full min-h-[700px]" />
+              <svg ref={svgRef} className="w-full h-full min-h-175" />
               <div ref={tooltipRef} className="dark:text-gray-800" />
             </div>
           </Card>

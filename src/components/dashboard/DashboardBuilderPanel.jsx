@@ -4,10 +4,9 @@ import Button from '../ui/Button';
 import { Plus, Trash2, Settings, Save } from 'lucide-react';
 
 const DashboardBuilderPanel = ({ config, onSave, columns, schema, onClose }) => {
-  const [activeTab, setActiveTab] = useState('charts'); // filters, kpis, charts
+  const [activeTab, setActiveTab] = useState('charts'); 
   const [draftConfig, setDraftConfig] = useState(config || { filters: [], kpiCards: [], charts: [] });
 
-  // Update draft when opened with a new config
   useEffect(() => {
     if (config) {
       setDraftConfig(config);
@@ -78,17 +77,17 @@ const DashboardBuilderPanel = ({ config, onSave, columns, schema, onClose }) => 
   };
 
   return (
-    <Card className="mb-6 border-2 border-[var(--color-primary)] shadow-lg bg-gray-50 dark:bg-[#112D4E]/50">
+    <Card className="mb-6 border-2 border-(--color-primary) shadow-lg bg-gray-50 dark:bg-[#112D4E]/50">
       <div className="flex items-center justify-between mb-4 border-b pb-4 dark:border-[#3F72AF]/30">
-        <h2 className="text-xl font-bold flex items-center gap-2 text-[var(--color-dark)] dark:text-white">
-          <Settings className="w-5 h-5 text-[var(--color-primary)]" />
+        <h2 className="text-xl font-bold flex items-center gap-2 text-(--color-dark) dark:text-white">
+          <Settings className="w-5 h-5 text-(--color-primary)" />
           Dashboard Builder
         </h2>
         <div className="flex items-center gap-4">
           <div className="flex bg-gray-200 dark:bg-gray-800 p-1 rounded-lg">
-            <button onClick={() => setActiveTab('filters')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${activeTab === 'filters' ? 'bg-white text-[var(--color-primary)] shadow-sm dark:bg-gray-700' : 'text-gray-600 dark:text-gray-300'}`}>Filters</button>
-            <button onClick={() => setActiveTab('kpis')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${activeTab === 'kpis' ? 'bg-white text-[var(--color-primary)] shadow-sm dark:bg-gray-700' : 'text-gray-600 dark:text-gray-300'}`}>KPI Cards</button>
-            <button onClick={() => setActiveTab('charts')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${activeTab === 'charts' ? 'bg-white text-[var(--color-primary)] shadow-sm dark:bg-gray-700' : 'text-gray-600 dark:text-gray-300'}`}>Charts</button>
+            <button onClick={() => setActiveTab('filters')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${activeTab === 'filters' ? 'bg-white text-(--color-primary) shadow-sm dark:bg-gray-700' : 'text-gray-600 dark:text-gray-300'}`}>Filters</button>
+            <button onClick={() => setActiveTab('kpis')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${activeTab === 'kpis' ? 'bg-white text-(--color-primary) shadow-sm dark:bg-gray-700' : 'text-gray-600 dark:text-gray-300'}`}>KPI Cards</button>
+            <button onClick={() => setActiveTab('charts')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${activeTab === 'charts' ? 'bg-white text-(--color-primary) shadow-sm dark:bg-gray-700' : 'text-gray-600 dark:text-gray-300'}`}>Charts</button>
           </div>
           <Button onClick={handleSave} className="bg-green-600 hover:bg-green-700 text-white">
             <Save className="w-4 h-4 mr-2" /> Save & Apply

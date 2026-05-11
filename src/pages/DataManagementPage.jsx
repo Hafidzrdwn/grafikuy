@@ -1,5 +1,4 @@
-// src/pages/DataManagementPage.jsx
-import { useContext, useState, useRef, useEffect, useMemo } from 'react';
+import { useContext, useState, useRef, useMemo } from 'react';
 import { DataContext } from '../context/DataContext';
 import { ToastContext } from '../components/ui/Toast';
 import { useImportPassword } from '../hooks/useImportPassword';
@@ -23,7 +22,7 @@ const DataManagementPage = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
   const [pendingAction, setPendingAction] = useState(null);
-  const [viewedData, setViewedData] = useState(null); // Contains raw dataset rows for preview
+  const [viewedData, setViewedData] = useState(null);
   const [schemaConfig, setSchemaConfig] = useState({});
   const fileInputRef = useRef(null);
 
@@ -113,7 +112,6 @@ const DataManagementPage = () => {
 
   const handleView = (dataset) => {
     if (dataset.id === selectedDataset?.id) {
-      // Build initial schema config from the analyzer
       const initialSchema = {};
       schema?.columns?.forEach(c => {
         initialSchema[c.name] = c.type;
@@ -131,8 +129,7 @@ const DataManagementPage = () => {
 
   const previewTransformedData = useMemo(() => {
     if (!viewedData) return [];
-    // Only transform the first 50 rows for preview to keep the UI snappy
-    const sample = viewedData.rows.slice(0, 50);
+    const sample = viewedData.rows.slice(0, 100);
     return transformDataset(sample, schemaConfig);
   }, [viewedData, schemaConfig]);
 
@@ -155,7 +152,7 @@ const DataManagementPage = () => {
               Back
             </Button>
             <div>
-              <h1 className="text-2xl font-bold text-[var(--color-dark)] dark:text-white">Data Source: {viewedData.name}</h1>
+              <h1 className="text-2xl font-bold text-(--color-dark) dark:text-white">Data Source: {viewedData.name}</h1>
               <p className="text-gray-500 dark:text-gray-400">Click the icons on the table headers to adjust data types.</p>
             </div>
           </div>

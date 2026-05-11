@@ -1,4 +1,3 @@
-// src/components/ui/Spinner.jsx
 import { Loader2 } from 'lucide-react';
 
 const Spinner = ({ size = 'md' }) => {

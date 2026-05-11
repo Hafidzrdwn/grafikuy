@@ -75,7 +75,6 @@ const AdvancedChart4Page = () => {
       .style('box-shadow', '0 4px 12px rgb(0 0 0 / 0.15)')
       .style('color', '#333');
 
-    // Date formatter
     const formatDate = (rawVal) => {
       let d;
       if (typeof rawVal === 'number' && rawVal > 40000 && rawVal < 50000) {
@@ -103,10 +102,7 @@ const AdvancedChart4Page = () => {
       }
     };
 
-    // Aggregation function
     const aggFn = config.aggType || 'sum';
-
-    // Group data by formatted date, then by category
     const grouped = new Map();
     const catTotals = new Map();
     
@@ -123,12 +119,10 @@ const AdvancedChart4Page = () => {
       catTotals.set(catVal, (catTotals.get(catVal) || 0) + val);
     });
 
-    // Apply Top N filter
     const topN = config.topN || 7;
     const sortedCats = Array.from(catTotals.entries()).sort((a, b) => b[1] - a[1]);
     const keys = sortedCats.slice(0, topN).map(([k]) => k);
 
-    // Build formatted data
     const dataFormatted = Array.from(grouped, ([dateKey, catMap]) => {
       const obj = { date: new Date(dateKey) };
       if (isNaN(obj.date)) obj.date = dateKey;
@@ -194,7 +188,6 @@ const AdvancedChart4Page = () => {
       .call(d3.axisBottom(x).ticks(width / 100).tickSizeOuter(0))
       .attr('color', 'currentColor');
 
-    // Legend
     const legend = svg.append('g')
       .attr('transform', `translate(${width - 120}, ${margin.top})`);
 
@@ -253,9 +246,9 @@ const AdvancedChart4Page = () => {
         <EmptyState title="Build Your Advanced Chart" description="Your chart is empty. Click 'Edit Chart' to map your data streams." />
       ) : (
         <>
-          <Card className="w-full min-h-[500px] p-4 relative">
+          <Card className="w-full min-h-125 p-4 relative">
             <div className="relative w-full h-full">
-              <svg ref={svgRef} className="w-full h-full min-h-[500px] text-gray-700 dark:text-gray-300" />
+              <svg ref={svgRef} className="w-full h-full min-h-125 text-gray-700 dark:text-gray-300" />
               <div ref={tooltipRef} className="dark:text-gray-800" />
             </div>
           </Card>

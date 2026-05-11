@@ -37,10 +37,10 @@ const AdvancedBuilderPanel = ({ config, onSave, columns, onClose, chartType }) =
   };
 
   return (
-    <Card className="mb-6 border-2 border-[var(--color-primary)] shadow-lg bg-gray-50 dark:bg-[#112D4E]/50">
+    <Card className="mb-6 border-2 border-(--color-primary) shadow-lg bg-gray-50 dark:bg-[#112D4E]/50">
       <div className="flex items-center justify-between mb-4 border-b pb-4 dark:border-[#3F72AF]/30">
-        <h2 className="text-xl font-bold flex items-center gap-2 text-[var(--color-dark)] dark:text-white">
-          <Settings className="w-5 h-5 text-[var(--color-primary)]" />
+        <h2 className="text-xl font-bold flex items-center gap-2 text-(--color-dark) dark:text-white">
+          <Settings className="w-5 h-5 text-(--color-primary)" />
           Advanced Chart Builder
         </h2>
         <div className="flex items-center gap-4">
@@ -54,7 +54,6 @@ const AdvancedBuilderPanel = ({ config, onSave, columns, onClose, chartType }) =
         {isStream ? (
           /* ===== STREAMGRAPH BUILDER ===== */
           <div className="space-y-4">
-            {/* Row 1: Time Axis */}
             <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border dark:border-[#3F72AF]/30">
               <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 block mb-3 uppercase tracking-wider">Time Axis (X)</label>
               <div className="flex gap-4">
@@ -79,7 +78,6 @@ const AdvancedBuilderPanel = ({ config, onSave, columns, onClose, chartType }) =
               </div>
             </div>
 
-            {/* Row 2: Category / Stream */}
             <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border dark:border-[#3F72AF]/30">
               <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 block mb-3 uppercase tracking-wider">Category / Stream (Series)</label>
               <div className="flex gap-4">
@@ -104,7 +102,6 @@ const AdvancedBuilderPanel = ({ config, onSave, columns, onClose, chartType }) =
               </div>
             </div>
 
-            {/* Row 3: Measure */}
             <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border dark:border-[#3F72AF]/30">
               <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 block mb-3 uppercase tracking-wider">Measure (Y / Thickness)</label>
               <div className="flex gap-4">

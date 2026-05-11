@@ -1,4 +1,3 @@
-// src/components/ui/EmptyState.jsx
 import Button from './Button';
 import { Database } from 'lucide-react';
 

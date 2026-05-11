@@ -43,10 +43,10 @@ const DataTable = ({ columns, data, schemaConfig, onTypeChange }) => {
   const [openDropdown, setOpenDropdown] = useState(null);
 
   return (
-    <Card className="p-0 overflow-hidden overflow-visible">
-      <div className="overflow-x-auto min-h-[400px]">
+    <Card className="p-0 overflow-hidden">
+      <div className="overflow-x-auto min-h-100">
         <table className="w-full text-sm text-left">
-          <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-[#112D4E] dark:text-gray-300 border-b border-[var(--color-muted)] dark:border-[#3F72AF]/30">
+          <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-[#112D4E] dark:text-gray-300 border-b border-(--color-muted) dark:border-[#3F72AF]/30">
             <tr>
               {columns.map(col => {
                 const colType = schemaConfig ? schemaConfig[col] : 'string';
@@ -71,7 +71,7 @@ const DataTable = ({ columns, data, schemaConfig, onTypeChange }) => {
                                 {['string', 'number', 'date', 'currency', 'category'].map(type => (
                                   <button
                                     key={type}
-                                    className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-gray-100 dark:hover:bg-gray-700 ${colType === type ? 'text-[var(--color-primary)] font-bold' : 'text-gray-700 dark:text-gray-300'}`}
+                                    className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-gray-100 dark:hover:bg-gray-700 ${colType === type ? 'text-(--color-primary) font-bold' : 'text-gray-700 dark:text-gray-300'}`}
                                     onClick={() => { onTypeChange(col, type); setOpenDropdown(null); }}
                                   >
                                     {getTypeIcon(type)}
@@ -84,10 +84,10 @@ const DataTable = ({ columns, data, schemaConfig, onTypeChange }) => {
                         </div>
                       ) : null}
 
-                      <div className="flex-1 cursor-pointer hover:text-[var(--color-primary)] transition-colors" onClick={() => handleSort(col)}>
+                      <div className="flex-1 cursor-pointer hover:text-(--color-primary) transition-colors" onClick={() => handleSort(col)}>
                         {col}
                         {sortConfig.key === col && (
-                          <span className="ml-1 text-[var(--color-primary)] dark:text-[#DBE2EF]">
+                          <span className="ml-1 text-(--color-primary) dark:text-[#DBE2EF]">
                             {sortConfig.direction === 'asc' ? '↑' : '↓'}
                           </span>
                         )}
@@ -100,7 +100,7 @@ const DataTable = ({ columns, data, schemaConfig, onTypeChange }) => {
           </thead>
           <tbody>
             {paginatedData.map((row, idx) => (
-              <tr key={idx} className="bg-white dark:bg-transparent border-b border-[var(--color-muted)] dark:border-[#3F72AF]/30 hover:bg-gray-50 dark:hover:bg-[#3F72AF]/10 transition-colors">
+              <tr key={idx} className="bg-white dark:bg-transparent border-b border-(--color-muted) dark:border-[#3F72AF]/30 hover:bg-gray-50 dark:hover:bg-[#3F72AF]/10 transition-colors">
                 {columns.map(col => (
                   <td key={col} className="px-6 py-4 whitespace-nowrap text-gray-700 dark:text-gray-200">
                     {row[col] !== null && row[col] !== undefined ? String(row[col]) : ''}

@@ -1,4 +1,3 @@
-// src/services/passwordService.js
 export const hashPassword = async (plainText) => {
   const encoder = new TextEncoder();
   const data = encoder.encode(plainText);

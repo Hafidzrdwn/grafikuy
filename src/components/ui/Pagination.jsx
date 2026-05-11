@@ -1,4 +1,3 @@
-// src/components/ui/Pagination.jsx
 import Button from './Button';
 
 const Pagination = ({ currentPage, totalPages, onPageChange }) => {
@@ -46,7 +45,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
                 disabled={typeof page !== 'number'}
                 className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium
                   ${currentPage === page 
-                    ? 'z-10 bg-[var(--color-primary)] border-[var(--color-primary)] text-white dark:bg-[#3F72AF] dark:border-[#3F72AF]' 
+                    ? 'z-10 bg-(--color-primary) border-(--color-primary) text-white dark:bg-[#3F72AF] dark:border-[#3F72AF]' 
                     : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
                   }
                   ${typeof page !== 'number' ? 'cursor-default' : ''}

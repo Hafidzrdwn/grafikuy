@@ -1,5 +1,4 @@
 import Card from '../ui/Card';
-import { TrendingUp, TrendingDown } from 'lucide-react';
 
 const StatCard = ({ stat }) => {
   return (

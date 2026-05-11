@@ -1,39 +1,3 @@
-// src/services/aggregationEngine.js
-
-/**
- * Example DashboardConfig JSON Schema:
- * {
- *   "filters": [
- *     { "column": "Region", "type": "select" },
- *     { "column": "Order Date", "type": "date-range" }
- *   ],
- *   "kpiCards": [
- *     { "id": "kpi-1", "label": "Total Sales", "column": "Sales", "aggType": "sum" },
- *     { "id": "kpi-2", "label": "Average Profit", "column": "Profit", "aggType": "avg" }
- *   ],
- *   "charts": [
- *     { 
- *       "id": "chart-1", 
- *       "type": "BarChart", 
- *       "xAxis": "Region", 
- *       "yAxis": "Sales", 
- *       "aggType": "sum" 
- *     },
- *     { 
- *       "id": "chart-2", 
- *       "type": "LineChart", 
- *       "xAxis": "Order Date", 
- *       "yAxis": "Sales", 
- *       "aggType": "sum" 
- *     }
- *   ]
- * }
- */
-
-/**
- * Formats a date value according to the specified format.
- * Used when a date column is selected as a chart dimension.
- */
 export const formatDateValue = (rawValue, format) => {
   if (!format || format === 'auto') return String(rawValue);
   
@@ -61,16 +25,9 @@ export const formatDateValue = (rawValue, format) => {
   }
 };
 
-/**
- * Applies active filters to the raw dataset.
- * @param {Array} data - Raw array of objects (e.g., 10,000 rows)
- * @param {Object} activeFilters - Format: { "Region": "North", "Category": "Electronics" }
- * @returns {Array} Filtered data
- */
 export const applyFilters = (data, activeFilters) => {
   if (!activeFilters || Object.keys(activeFilters).length === 0) return data;
 
-  // Separate date-range filters from regular filters
   const dateRanges = {};
   const regularFilters = {};
   
@@ -90,7 +47,6 @@ export const applyFilters = (data, activeFilters) => {
   }
 
   return data.filter(row => {
-    // Check regular filters
     for (const [column, filterValue] of Object.entries(regularFilters)) {
       if (!filterValue) continue;
       const cellValue = row[column];
@@ -99,42 +55,30 @@ export const applyFilters = (data, activeFilters) => {
       }
     }
     
-    // Check date-range filters
     for (const [column, range] of Object.entries(dateRanges)) {
       const cellDate = new Date(row[column]);
       if (isNaN(cellDate.getTime())) return false;
       if (range.from && cellDate < range.from) return false;
-      if (range.to && cellDate > new Date(range.to.getTime() + 86400000)) return false; // Include end date
+      if (range.to && cellDate > new Date(range.to.getTime() + 86400000)) return false; 
     }
     
     return true;
   });
 };
 
-/**
- * Aggregates data for charts and KPI cards (Pivot Table logic).
- * @param {Array} data - Filtered array of objects
- * @param {String} groupByCol - The Dimension (e.g., "Region", "Category"). If null, returns a single global aggregation.
- * @param {String} measureCol - The Measure (e.g., "Sales", "Profit")
- * @param {String} aggType - Aggregation type: "sum", "avg", "count", "min", "max"
- * @returns {Array|Number} Array of { [groupByCol]: value, [measureCol]: aggValue } OR a single number if groupByCol is null.
- */
 export const aggregateData = (data, groupByCol, measureCol, aggType = 'sum') => {
   if (!data || data.length === 0) return groupByCol ? [] : 0;
 
-  // Global Aggregation (For KPI Cards)
   if (!groupByCol) {
     return computeAgg(data, measureCol, aggType);
   }
 
-  // Grouped Aggregation (For Charts)
   const grouped = {};
   
   for (let i = 0; i < data.length; i++) {
     const row = data[i];
     const groupKey = row[groupByCol];
     
-    // Skip null/undefined grouping keys
     if (groupKey === null || groupKey === undefined || groupKey === '') continue;
 
     if (!grouped[groupKey]) {
@@ -152,7 +96,6 @@ export const aggregateData = (data, groupByCol, measureCol, aggType = 'sum') => 
     });
   }
 
-  // Optional: Sort result by measure for better visualization
   if (aggType !== 'count') {
     result.sort((a, b) => b[measureCol] - a[measureCol]);
   }
@@ -160,7 +103,6 @@ export const aggregateData = (data, groupByCol, measureCol, aggType = 'sum') => 
   return result;
 };
 
-// Helper function to compute mathematical aggregation
 const computeAgg = (rows, measureCol, aggType) => {
   if (aggType === 'count') return rows.length;
   
@@ -190,10 +132,6 @@ const computeAgg = (rows, measureCol, aggType) => {
   }
 };
 
-/**
- * Transforms flat tabular data into a Graph structure (nodes and links)
- * Ideal for Force Directed Graphs, Radial Trees, etc.
- */
 export const flatToGraph = (data, dimensions, weightCol = null, aggType = 'count') => {
   if (!data || data.length === 0 || !dimensions || dimensions.length < 2) return { nodes: [], links: [] };
 
@@ -203,7 +141,7 @@ export const flatToGraph = (data, dimensions, weightCol = null, aggType = 'count
   data.forEach(row => {
     let prevId = null;
 
-    let linkVal = 1; // Default is count
+    let linkVal = 1; 
     if (weightCol && row[weightCol] !== undefined && row[weightCol] !== null) {
       const val = Number(row[weightCol]);
       if (!isNaN(val)) linkVal = val;
@@ -238,7 +176,7 @@ export const flatToGraph = (data, dimensions, weightCol = null, aggType = 'count
   const links = [];
   for (const linkData of linksMap.values()) {
     const valArr = linkData.value;
-    let finalWeight = valArr.length; // 'count'
+    let finalWeight = valArr.length; 
     if (aggType === 'sum') {
       finalWeight = valArr.reduce((a, b) => a + b, 0);
     } else if (aggType === 'avg') {
@@ -251,12 +189,10 @@ export const flatToGraph = (data, dimensions, weightCol = null, aggType = 'count
       value: finalWeight
     });
     
-    // Add to node weights for sizing
     if(nodesMap.has(linkData.source)) nodesMap.get(linkData.source).value += finalWeight;
     if(nodesMap.has(linkData.target)) nodesMap.get(linkData.target).value += finalWeight;
   }
 
-  // Normalize symbol size for ECharts
   const allNodeVals = Array.from(nodesMap.values()).map(n => n.value);
   const minVal = Math.min(...allNodeVals);
   const maxVal = Math.max(...allNodeVals);
@@ -264,7 +200,6 @@ export const flatToGraph = (data, dimensions, weightCol = null, aggType = 'count
   const nodes = Array.from(nodesMap.values()).map(n => {
     let size = 10;
     if (maxVal > minVal) {
-      // Scale between 10 and 50
       size = 10 + ((n.value - minVal) / (maxVal - minVal)) * 40;
     }
     return { ...n, symbolSize: size };

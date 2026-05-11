@@ -8,7 +8,6 @@ const PieChart = ({ data }) => {
   useEffect(() => {
     if (!data || !svgRef.current) return;
 
-    // Coerce all values to numbers and filter out zero/NaN
     const cleanData = data.map(d => ({ ...d, value: Number(d.value) || 0 })).filter(d => d.value > 0);
     if (cleanData.length === 0) return;
 
@@ -45,7 +44,6 @@ const PieChart = ({ data }) => {
     
     const total = d3.sum(cleanData, d => d.value);
 
-    // Center Text
     g.append('text')
       .attr('text-anchor', 'middle')
       .attr('dy', '-0.2em')
@@ -88,7 +86,6 @@ const PieChart = ({ data }) => {
         tooltip.transition().duration(400).style('opacity', 0);
       });
 
-    // Add legend
     const legend = svg.append('g')
       .attr('transform', `translate(${width - 120}, 20)`);
 
