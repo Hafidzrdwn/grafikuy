@@ -52,33 +52,85 @@ const AdvancedBuilderPanel = ({ config, onSave, columns, onClose, chartType }) =
 
       <div className="space-y-4">
         {isStream ? (
-          <div className="flex gap-4 items-center bg-white dark:bg-gray-800 p-3 rounded-lg border dark:border-[#3F72AF]/30 mb-2">
-            <div className="flex-1">
-              <label className="text-xs text-gray-500 block mb-1">Time Dimension (X-Axis)</label>
-              <select className="w-full p-2 border rounded text-sm dark:bg-gray-700 dark:text-white" value={draftConfig.dateCol || ''} onChange={(e) => setDraftConfig({ ...draftConfig, dateCol: e.target.value })}>
-                <option value="">-- Select Column --</option>
-                {columns.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
+          /* ===== STREAMGRAPH BUILDER ===== */
+          <div className="space-y-4">
+            {/* Row 1: Time Axis */}
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border dark:border-[#3F72AF]/30">
+              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 block mb-3 uppercase tracking-wider">Time Axis (X)</label>
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="text-xs text-gray-500 block mb-1">Date Column</label>
+                  <select className="w-full p-2 border rounded text-sm dark:bg-gray-700 dark:text-white" value={draftConfig.dateCol || ''} onChange={(e) => setDraftConfig({ ...draftConfig, dateCol: e.target.value })}>
+                    <option value="">-- Select Column --</option>
+                    {columns.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div className="flex-1">
+                  <label className="text-xs text-gray-500 block mb-1">Date Grouping</label>
+                  <select className="w-full p-2 border rounded text-sm dark:bg-gray-700 dark:text-white" value={draftConfig.dateFormat || 'month-year'} onChange={(e) => setDraftConfig({ ...draftConfig, dateFormat: e.target.value })}>
+                    <option value="auto">Auto (Raw)</option>
+                    <option value="year">Year (2024)</option>
+                    <option value="month">Month (January)</option>
+                    <option value="month-year">Month-Year (Jan 2024)</option>
+                    <option value="quarter">Quarter (Q1 2024)</option>
+                    <option value="day">Day (2024-01-15)</option>
+                  </select>
+                </div>
+              </div>
             </div>
-            <div className="flex-1">
-              <label className="text-xs text-gray-500 block mb-1">Category Dimension (Layers)</label>
-              <select className="w-full p-2 border rounded text-sm dark:bg-gray-700 dark:text-white" value={draftConfig.catCol || ''} onChange={(e) => setDraftConfig({ ...draftConfig, catCol: e.target.value })}>
-                <option value="">-- Select Column --</option>
-                {columns.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
+
+            {/* Row 2: Category / Stream */}
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border dark:border-[#3F72AF]/30">
+              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 block mb-3 uppercase tracking-wider">Category / Stream (Series)</label>
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="text-xs text-gray-500 block mb-1">Category Column</label>
+                  <select className="w-full p-2 border rounded text-sm dark:bg-gray-700 dark:text-white" value={draftConfig.catCol || ''} onChange={(e) => setDraftConfig({ ...draftConfig, catCol: e.target.value })}>
+                    <option value="">-- Select Column --</option>
+                    {columns.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div className="flex-1">
+                  <label className="text-xs text-gray-500 block mb-1">Top N Streams</label>
+                  <input 
+                    type="number" 
+                    min={2} max={20} 
+                    className="w-full p-2 border rounded text-sm dark:bg-gray-700 dark:text-white" 
+                    value={draftConfig.topN || 7} 
+                    onChange={(e) => setDraftConfig({ ...draftConfig, topN: Math.max(2, Math.min(20, Number(e.target.value))) })}
+                  />
+                  <p className="text-[10px] text-gray-400 mt-1">Limit number of layers (2–20)</p>
+                </div>
+              </div>
             </div>
-            <div className="flex-1">
-              <label className="text-xs text-gray-500 block mb-1">Value Measure (Thickness)</label>
-              <select className="w-full p-2 border rounded text-sm dark:bg-gray-700 dark:text-white" value={draftConfig.valCol || ''} onChange={(e) => setDraftConfig({ ...draftConfig, valCol: e.target.value })}>
-                <option value="">-- Select Column --</option>
-                {columns.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
+
+            {/* Row 3: Measure */}
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border dark:border-[#3F72AF]/30">
+              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 block mb-3 uppercase tracking-wider">Measure (Y / Thickness)</label>
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="text-xs text-gray-500 block mb-1">Value Column</label>
+                  <select className="w-full p-2 border rounded text-sm dark:bg-gray-700 dark:text-white" value={draftConfig.valCol || ''} onChange={(e) => setDraftConfig({ ...draftConfig, valCol: e.target.value })}>
+                    <option value="">-- Select Column --</option>
+                    {columns.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div className="flex-1">
+                  <label className="text-xs text-gray-500 block mb-1">Aggregation</label>
+                  <select className="w-full p-2 border rounded text-sm dark:bg-gray-700 dark:text-white" value={draftConfig.aggType || 'sum'} onChange={(e) => setDraftConfig({ ...draftConfig, aggType: e.target.value })}>
+                    <option value="sum">Sum</option>
+                    <option value="avg">Average</option>
+                    <option value="count">Count Rows</option>
+                  </select>
+                </div>
+              </div>
             </div>
           </div>
         ) : isMap ? (
+          /* ===== MAP BUILDER ===== */
           <div className="flex gap-4 items-center bg-white dark:bg-gray-800 p-3 rounded-lg border dark:border-[#3F72AF]/30 mb-2">
             <div className="flex-1">
-              <label className="text-xs text-gray-500 block mb-1">Geographical Dimension (Country Name)</label>
+              <label className="text-xs text-gray-500 block mb-1">Geographical Dimension (Country/Region/City)</label>
               <select className="w-full p-2 border rounded text-sm dark:bg-gray-700 dark:text-white" value={draftConfig.geoCol || ''} onChange={(e) => setDraftConfig({ ...draftConfig, geoCol: e.target.value })}>
                 <option value="">-- Select Column --</option>
                 {columns.map(c => <option key={c} value={c}>{c}</option>)}
@@ -104,7 +156,7 @@ const AdvancedBuilderPanel = ({ config, onSave, columns, onClose, chartType }) =
             )}
           </div>
         ) : (
-          // Default for Force / Radial Tree
+          /* ===== DEFAULT: FORCE / RADIAL TREE BUILDER ===== */
           <div className="flex flex-col gap-4 bg-white dark:bg-gray-800 p-3 rounded-lg border dark:border-[#3F72AF]/30 mb-2">
             <div>
               <label className="text-xs text-gray-500 block mb-2 font-semibold">Hierarchy Levels (Dimensions)</label>
@@ -146,6 +198,17 @@ const AdvancedBuilderPanel = ({ config, onSave, columns, onClose, chartType }) =
                   </select>
                 </div>
               )}
+              <div className="flex-1">
+                <label className="text-xs text-gray-500 block mb-1">Max Nodes Limit</label>
+                <input 
+                  type="number" 
+                  min={20} max={2000} 
+                  className="w-full p-2 border rounded text-sm dark:bg-gray-700 dark:text-white" 
+                  value={draftConfig.maxNodes || 200} 
+                  onChange={(e) => setDraftConfig({ ...draftConfig, maxNodes: Math.max(20, Math.min(2000, Number(e.target.value))) })}
+                />
+                <p className="text-[10px] text-gray-400 mt-1">Limits graph complexity (20–2000)</p>
+              </div>
             </div>
           </div>
         )}

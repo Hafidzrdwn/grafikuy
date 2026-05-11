@@ -110,11 +110,34 @@ const DashboardPage = () => {
         chartData = aggResults.map(r => ({ id: String(r[dim]), label: String(r[dim]), value: r[meas] }));
       }
     } else if (chartConfig.type === 'ScatterChart') {
-      chartData = filteredData.map(row => ({ 
-        x: Number(row[dim]) || 0, 
-        y: Number(row[meas]) || 0, 
-        category: 'Data Point' 
-      }));
+      const detailDim = chartConfig.detailDim;
+      if (detailDim) {
+        // Aggregate X and Y per detail dimension category
+        const grouped = {};
+        filteredData.forEach(row => {
+          const cat = String(row[detailDim] || '');
+          if (!grouped[cat]) grouped[cat] = { xVals: [], yVals: [] };
+          grouped[cat].xVals.push(Number(row[dim]) || 0);
+          grouped[cat].yVals.push(Number(row[meas]) || 0);
+        });
+        const xAgg = chartConfig.xAgg || 'avg';
+        const yAgg = chartConfig.yAgg || 'sum';
+        const aggFn = (arr, type) => {
+          const s = arr.reduce((a, b) => a + b, 0);
+          return type === 'avg' ? s / arr.length : s;
+        };
+        chartData = Object.entries(grouped).map(([cat, vals]) => ({
+          x: aggFn(vals.xVals, xAgg),
+          y: aggFn(vals.yVals, yAgg),
+          category: cat
+        }));
+      } else {
+        chartData = filteredData.map(row => ({ 
+          x: Number(row[dim]) || 0, 
+          y: Number(row[meas]) || 0, 
+          category: 'Data Point' 
+        }));
+      }
     }
 
     const ChartComp = { 'BarChart': BarChart, 'LineChart': LineChart, 'PieChart': PieChart, 'ScatterChart': ScatterChart }[chartConfig.type];

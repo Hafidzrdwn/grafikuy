@@ -18,14 +18,15 @@ const LineChart = ({ data }) => {
 
     const tooltip = d3.select(tooltipRef.current)
       .style('opacity', 0)
-      .style('position', 'absolute')
+      .style('position', 'fixed')
+      .style('z-index', '9999')
       .style('background', 'white')
       .style('border', '1px solid #ccc')
-      .style('border-radius', '4px')
-      .style('padding', '8px')
+      .style('border-radius', '6px')
+      .style('padding', '8px 12px')
       .style('pointer-events', 'none')
       .style('font-size', '12px')
-      .style('box-shadow', '0 4px 6px -1px rgb(0 0 0 / 0.1)');
+      .style('box-shadow', '0 4px 12px rgb(0 0 0 / 0.15)');
 
     const x = d3.scalePoint()
       .domain(data.map(d => d.label))
@@ -33,12 +34,12 @@ const LineChart = ({ data }) => {
       .padding(0.5);
 
     const y = d3.scaleLinear()
-      .domain([0, d3.max(data, d => d.value)]).nice()
+      .domain([0, d3.max(data, d => Number(d.value))]).nice()
       .range([height - margin.bottom, margin.top]);
 
     const line = d3.line()
       .x(d => x(d.label))
-      .y(d => y(d.value))
+      .y(d => y(Number(d.value)))
       .curve(d3.curveMonotoneX);
 
     svg.append('path')
@@ -52,21 +53,25 @@ const LineChart = ({ data }) => {
       .data(data)
       .join('circle')
       .attr('cx', d => x(d.label))
-      .attr('cy', d => y(d.value))
+      .attr('cy', d => y(Number(d.value)))
       .attr('r', 5)
       .attr('fill', 'var(--color-primary)')
       .attr('stroke', 'var(--color-bg)')
       .attr('stroke-width', 2)
       .on('mouseover', (event, d) => {
         d3.select(event.currentTarget).attr('r', 8).attr('fill', 'var(--color-accent)');
-        tooltip.transition().duration(200).style('opacity', .9);
-        tooltip.html(`<strong>${d.label}</strong><br/>Value: ${d.value}`)
-          .style('left', (event.pageX + 10) + 'px')
-          .style('top', (event.pageY - 28) + 'px');
+        const formatted = new Intl.NumberFormat().format(Number(d.value));
+        tooltip.transition().duration(200).style('opacity', .95);
+        tooltip.html(`<strong>${d.label}</strong><br/>Value: ${formatted}`)
+          .style('left', (event.clientX + 12) + 'px')
+          .style('top', (event.clientY - 28) + 'px');
+      })
+      .on('mousemove', (event) => {
+        tooltip.style('left', (event.clientX + 12) + 'px').style('top', (event.clientY - 28) + 'px');
       })
       .on('mouseout', (event) => {
         d3.select(event.currentTarget).attr('r', 5).attr('fill', 'var(--color-primary)');
-        tooltip.transition().duration(500).style('opacity', 0);
+        tooltip.transition().duration(400).style('opacity', 0);
       });
 
     svg.append('g')

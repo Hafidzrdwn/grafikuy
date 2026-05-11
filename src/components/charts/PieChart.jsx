@@ -7,6 +7,11 @@ const PieChart = ({ data }) => {
 
   useEffect(() => {
     if (!data || !svgRef.current) return;
+
+    // Coerce all values to numbers and filter out zero/NaN
+    const cleanData = data.map(d => ({ ...d, value: Number(d.value) || 0 })).filter(d => d.value > 0);
+    if (cleanData.length === 0) return;
+
     const width = 500;
     const height = 300;
     const radius = Math.min(width, height) / 2 - 20;
@@ -18,26 +23,27 @@ const PieChart = ({ data }) => {
 
     const tooltip = d3.select(tooltipRef.current)
       .style('opacity', 0)
-      .style('position', 'absolute')
+      .style('position', 'fixed')
+      .style('z-index', '9999')
       .style('background', 'white')
       .style('border', '1px solid #ccc')
-      .style('border-radius', '4px')
-      .style('padding', '8px')
+      .style('border-radius', '6px')
+      .style('padding', '8px 12px')
       .style('pointer-events', 'none')
       .style('font-size', '12px')
-      .style('box-shadow', '0 4px 6px -1px rgb(0 0 0 / 0.1)');
+      .style('box-shadow', '0 4px 12px rgb(0 0 0 / 0.15)');
 
     const g = svg.append('g')
       .attr('transform', `translate(${width / 2},${height / 2})`);
 
     const color = d3.scaleOrdinal()
-      .domain(data.map(d => d.id))
+      .domain(cleanData.map(d => d.id))
       .range(['#3F72AF', '#112D4E', '#93c5fd', '#bfdbfe', '#60a5fa', '#3b82f6', '#2563eb', '#1d4ed8']);
 
     const pie = d3.pie().value(d => d.value).sort(null);
-    const arc = d3.arc().innerRadius(radius * 0.6).outerRadius(radius); // Inner radius makes it a Donut
+    const arc = d3.arc().innerRadius(radius * 0.6).outerRadius(radius);
     
-    const total = d3.sum(data, d => d.value);
+    const total = d3.sum(cleanData, d => d.value);
 
     // Center Text
     g.append('text')
@@ -56,7 +62,7 @@ const PieChart = ({ data }) => {
       .text(new Intl.NumberFormat('en-US', { notation: 'compact' }).format(total));
 
     const arcs = g.selectAll('arc')
-      .data(pie(data))
+      .data(pie(cleanData))
       .enter()
       .append('g');
 
@@ -66,16 +72,20 @@ const PieChart = ({ data }) => {
       .attr('stroke', 'var(--color-bg)')
       .style('stroke-width', '2px')
       .on('mouseover', (event, d) => {
-        d3.select(event.currentTarget).style('opacity', 0.8);
-        tooltip.transition().duration(200).style('opacity', .9);
+        d3.select(event.currentTarget).style('opacity', 0.75);
+        const formatted = new Intl.NumberFormat().format(d.data.value);
         const percent = ((d.data.value / total) * 100).toFixed(1);
-        tooltip.html(`<strong>${d.data.label}</strong><br/>Value: ${d.data.value}<br/>Share: ${percent}%`)
-          .style('left', (event.pageX + 10) + 'px')
-          .style('top', (event.pageY - 28) + 'px');
+        tooltip.transition().duration(200).style('opacity', .95);
+        tooltip.html(`<strong>${d.data.label}</strong><br/>Value: ${formatted}<br/>Share: ${percent}%`)
+          .style('left', (event.clientX + 12) + 'px')
+          .style('top', (event.clientY - 28) + 'px');
+      })
+      .on('mousemove', (event) => {
+        tooltip.style('left', (event.clientX + 12) + 'px').style('top', (event.clientY - 28) + 'px');
       })
       .on('mouseout', (event) => {
         d3.select(event.currentTarget).style('opacity', 1);
-        tooltip.transition().duration(500).style('opacity', 0);
+        tooltip.transition().duration(400).style('opacity', 0);
       });
 
     // Add legend
@@ -83,7 +93,7 @@ const PieChart = ({ data }) => {
       .attr('transform', `translate(${width - 120}, 20)`);
 
     const legendItems = legend.selectAll('g')
-      .data(data.slice(0, 8)) // Show max 8 legends
+      .data(cleanData.slice(0, 8))
       .enter()
       .append('g')
       .attr('transform', (d, i) => `translate(0, ${i * 20})`);

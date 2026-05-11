@@ -52,7 +52,7 @@ const AdvancedChart1Page = () => {
 
   // Build tree from graph
   const buildTree = (graph) => {
-    if (!graph.nodes || graph.nodes.length === 0) return { name: 'Root', children: [] };
+    if (!graph.nodes || graph.nodes.length === 0) return { name: 'Root', children: [], value: 0 };
     const targetSet = new Set(graph.links.map(l => l.target));
     let rootNodes = graph.nodes.filter(n => !targetSet.has(n.id));
     if (rootNodes.length === 0) rootNodes = [graph.nodes[0]];
@@ -70,6 +70,14 @@ const AdvancedChart1Page = () => {
       });
     };
 
+    // Recursively sum all values in a subtree
+    const sumTreeValues = (node) => {
+      if (!node.children || node.children.length === 0) return node.value || 0;
+      let total = node.value || 0;
+      node.children.forEach(child => { total += sumTreeValues(child); });
+      return total;
+    };
+
     const treeData = {
       name: 'All Data',
       children: rootNodes.map(n => ({
@@ -79,7 +87,14 @@ const AdvancedChart1Page = () => {
       }))
     };
 
-    if (treeData.children.length === 1) return treeData.children[0];
+    // Calculate root total from all children
+    treeData.value = sumTreeValues(treeData);
+
+    if (treeData.children.length === 1) {
+      const single = treeData.children[0];
+      single.value = sumTreeValues(single);
+      return single;
+    }
     return treeData;
   };
 
@@ -102,14 +117,16 @@ const AdvancedChart1Page = () => {
 
     const tooltip = d3.select(tooltipRef.current)
       .style('opacity', 0)
-      .style('position', 'absolute')
+      .style('position', 'fixed')
+      .style('z-index', '9999')
       .style('background', 'white')
       .style('border', '1px solid #ccc')
       .style('border-radius', '6px')
       .style('padding', '8px 12px')
       .style('pointer-events', 'none')
       .style('font-size', '12px')
-      .style('box-shadow', '0 4px 12px rgb(0 0 0 / 0.15)');
+      .style('box-shadow', '0 4px 12px rgb(0 0 0 / 0.15)')
+      .style('color', '#333');
 
     const root = d3.hierarchy(treeData).sort((a, b) => d3.ascending(a.data.name, b.data.name));
     d3.cluster().size([2 * Math.PI, radius])(root);
@@ -139,17 +156,21 @@ const AdvancedChart1Page = () => {
 
     node.append('circle')
       .attr('fill', d => d.children ? '#3F72AF' : '#112D4E')
-      .attr('r', d => d.children ? 4 : 3)
+      .attr('r', d => d.children ? 5 : 4)
+      .style('cursor', 'pointer')
       .on('mouseover', (event, d) => {
-        d3.select(event.currentTarget).attr('r', 7).attr('fill', '#5A96E3');
+        d3.select(event.currentTarget).attr('r', 8).attr('fill', '#5A96E3');
         const val = d.data.value ? new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(d.data.value) : '';
         tooltip.transition().duration(200).style('opacity', 0.95);
         tooltip.html(`<strong>${d.data.name}</strong>${val ? '<br/>Value: ' + val : ''}`)
-          .style('left', (event.pageX + 12) + 'px')
-          .style('top', (event.pageY - 28) + 'px');
+          .style('left', (event.clientX + 14) + 'px')
+          .style('top', (event.clientY - 30) + 'px');
+      })
+      .on('mousemove', (event) => {
+        tooltip.style('left', (event.clientX + 14) + 'px').style('top', (event.clientY - 30) + 'px');
       })
       .on('mouseout', (event, d) => {
-        d3.select(event.currentTarget).attr('r', d.children ? 4 : 3).attr('fill', d.children ? '#3F72AF' : '#112D4E');
+        d3.select(event.currentTarget).attr('r', d.children ? 5 : 4).attr('fill', d.children ? '#3F72AF' : '#112D4E');
         tooltip.transition().duration(400).style('opacity', 0);
       });
 

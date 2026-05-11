@@ -50,7 +50,16 @@ const AdvancedChart3Page = () => {
   const handleFilterChange = (key, value) => setFilters(prev => ({ ...prev, [key]: value }));
   const filteredData = parsedData ? applyFilters(parsedData, filters) : [];
 
-  const graphData = isConfigured && filteredData ? flatToGraph(filteredData, config.dimensions, config.weightCol, config.aggType) : { nodes: [], links: [] };
+  const rawGraphData = isConfigured && filteredData ? flatToGraph(filteredData, config.dimensions, config.weightCol, config.aggType) : { nodes: [], links: [] };
+
+  const maxNodes = config?.maxNodes || 200;
+  const graphData = {
+    nodes: rawGraphData.nodes.slice(0, maxNodes),
+    links: rawGraphData.links.filter(l => {
+      const nodeIds = new Set(rawGraphData.nodes.slice(0, maxNodes).map(n => n.id));
+      return nodeIds.has(l.source) && nodeIds.has(l.target);
+    })
+  };
 
   useEffect(() => {
     if (!isConfigured || !svgRef.current || graphData.nodes.length === 0) return;
@@ -64,14 +73,16 @@ const AdvancedChart3Page = () => {
 
     const tooltip = d3.select(tooltipRef.current)
       .style('opacity', 0)
-      .style('position', 'absolute')
+      .style('position', 'fixed')
+      .style('z-index', '9999')
       .style('background', 'white')
       .style('border', '1px solid #ccc')
       .style('border-radius', '6px')
       .style('padding', '10px 14px')
       .style('pointer-events', 'none')
       .style('font-size', '12px')
-      .style('box-shadow', '0 4px 12px rgb(0 0 0 / 0.15)');
+      .style('box-shadow', '0 4px 12px rgb(0 0 0 / 0.15)')
+      .style('color', '#333');
 
     const levels = config.dimensions || [];
     const colors = ['#3F72AF', '#112D4E', '#80C4E9', '#96C9F4', '#5A96E3'];
@@ -117,8 +128,11 @@ const AdvancedChart3Page = () => {
         const val = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(d.value);
         tooltip.transition().duration(200).style('opacity', 0.95);
         tooltip.html(`<strong>${d.name}</strong><br/>Level: ${d.category}<br/>Weight: ${val}`)
-          .style('left', (event.pageX + 12) + 'px')
-          .style('top', (event.pageY - 28) + 'px');
+          .style('left', (event.clientX + 14) + 'px')
+          .style('top', (event.clientY - 30) + 'px');
+      })
+      .on('mousemove', (event) => {
+        tooltip.style('left', (event.clientX + 14) + 'px').style('top', (event.clientY - 30) + 'px');
       })
       .on('mouseout', (event, d) => {
         d3.select(event.currentTarget).attr('r', Math.max(4, d.symbolSize / 3));

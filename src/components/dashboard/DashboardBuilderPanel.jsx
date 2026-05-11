@@ -254,6 +254,31 @@ const DashboardBuilderPanel = ({ config, onSave, columns, schema, onClose }) => 
                         </select>
                       </div>
                     )}
+                    {chart.type === 'ScatterChart' && (
+                      <>
+                        <div className="flex-1">
+                          <label className="text-xs text-gray-500 block mb-1">Details / Points (Dimension)</label>
+                          <select className="w-full p-1.5 border rounded text-sm dark:bg-gray-700 dark:text-white" value={chart.detailDim || ''} onChange={(e) => updateItem('charts', i, 'detailDim', e.target.value)}>
+                            <option value="">None (Raw Points)</option>
+                            {columns.map(c => <option key={c} value={c}>{c}</option>)}
+                          </select>
+                        </div>
+                        <div className="flex-1">
+                          <label className="text-xs text-gray-500 block mb-1">X Aggregation</label>
+                          <select className="w-full p-1.5 border rounded text-sm dark:bg-gray-700 dark:text-white" value={chart.xAgg || 'avg'} onChange={(e) => updateItem('charts', i, 'xAgg', e.target.value)}>
+                            <option value="sum">Sum</option>
+                            <option value="avg">Average</option>
+                          </select>
+                        </div>
+                        <div className="flex-1">
+                          <label className="text-xs text-gray-500 block mb-1">Y Aggregation</label>
+                          <select className="w-full p-1.5 border rounded text-sm dark:bg-gray-700 dark:text-white" value={chart.yAgg || 'sum'} onChange={(e) => updateItem('charts', i, 'yAgg', e.target.value)}>
+                            <option value="sum">Sum</option>
+                            <option value="avg">Average</option>
+                          </select>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
                 <button onClick={() => removeItem('charts', i)} className="p-2 text-red-500 hover:bg-red-50 rounded mt-6"><Trash2 className="w-4 h-4" /></button>

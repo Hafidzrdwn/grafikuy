@@ -18,14 +18,15 @@ const BarChart = ({ data, orientation = 'vertical' }) => {
 
     const tooltip = d3.select(tooltipRef.current)
       .style('opacity', 0)
-      .style('position', 'absolute')
+      .style('position', 'fixed')
+      .style('z-index', '9999')
       .style('background', 'white')
       .style('border', '1px solid #ccc')
-      .style('border-radius', '4px')
-      .style('padding', '8px')
+      .style('border-radius', '6px')
+      .style('padding', '8px 12px')
       .style('pointer-events', 'none')
       .style('font-size', '12px')
-      .style('box-shadow', '0 4px 6px -1px rgb(0 0 0 / 0.1)');
+      .style('box-shadow', '0 4px 12px rgb(0 0 0 / 0.15)');
 
     const g = svg.append('g');
 
@@ -36,25 +37,33 @@ const BarChart = ({ data, orientation = 'vertical' }) => {
         .padding(0.2);
 
       const y = d3.scaleLinear()
-        .domain([0, d3.max(data, d => d.value)]).nice()
+        .domain([0, d3.max(data, d => Number(d.value))]).nice()
         .range([height - margin.bottom, margin.top]);
 
       g.selectAll('rect')
         .data(data)
         .join('rect')
         .attr('x', d => x(d.label))
-        .attr('y', d => y(d.value))
-        .attr('height', d => y(0) - y(d.value))
+        .attr('y', d => y(Number(d.value)))
+        .attr('height', d => y(0) - y(Number(d.value)))
         .attr('width', x.bandwidth())
         .attr('fill', 'var(--color-primary)')
         .attr('rx', 4)
         .on('mouseover', (event, d) => {
-          tooltip.transition().duration(200).style('opacity', .9);
-          tooltip.html(`<strong>${d.label}</strong><br/>Value: ${d.value}`)
-            .style('left', (event.pageX + 10) + 'px')
-            .style('top', (event.pageY - 28) + 'px');
+          d3.select(event.currentTarget).style('opacity', 0.8);
+          const formatted = new Intl.NumberFormat().format(Number(d.value));
+          tooltip.transition().duration(200).style('opacity', .95);
+          tooltip.html(`<strong>${d.label}</strong><br/>Value: ${formatted}`)
+            .style('left', (event.clientX + 12) + 'px')
+            .style('top', (event.clientY - 28) + 'px');
         })
-        .on('mouseout', () => tooltip.transition().duration(500).style('opacity', 0));
+        .on('mousemove', (event) => {
+          tooltip.style('left', (event.clientX + 12) + 'px').style('top', (event.clientY - 28) + 'px');
+        })
+        .on('mouseout', (event) => {
+          d3.select(event.currentTarget).style('opacity', 1);
+          tooltip.transition().duration(400).style('opacity', 0);
+        });
 
       svg.append('g')
         .attr('transform', `translate(0,${height - margin.bottom})`)
@@ -67,9 +76,8 @@ const BarChart = ({ data, orientation = 'vertical' }) => {
         .attr('color', 'currentColor');
 
     } else {
-      // Horizontal
       const x = d3.scaleLinear()
-        .domain([0, d3.max(data, d => d.value)]).nice()
+        .domain([0, d3.max(data, d => Number(d.value))]).nice()
         .range([margin.left, width - margin.right]);
 
       const y = d3.scaleBand()
@@ -82,17 +90,25 @@ const BarChart = ({ data, orientation = 'vertical' }) => {
         .join('rect')
         .attr('x', x(0))
         .attr('y', d => y(d.label))
-        .attr('width', d => x(d.value) - x(0))
+        .attr('width', d => x(Number(d.value)) - x(0))
         .attr('height', y.bandwidth())
         .attr('fill', 'var(--color-primary)')
         .attr('rx', 4)
         .on('mouseover', (event, d) => {
-          tooltip.transition().duration(200).style('opacity', .9);
-          tooltip.html(`<strong>${d.label}</strong><br/>Value: ${d.value}`)
-            .style('left', (event.pageX + 10) + 'px')
-            .style('top', (event.pageY - 28) + 'px');
+          d3.select(event.currentTarget).style('opacity', 0.8);
+          const formatted = new Intl.NumberFormat().format(Number(d.value));
+          tooltip.transition().duration(200).style('opacity', .95);
+          tooltip.html(`<strong>${d.label}</strong><br/>Value: ${formatted}`)
+            .style('left', (event.clientX + 12) + 'px')
+            .style('top', (event.clientY - 28) + 'px');
         })
-        .on('mouseout', () => tooltip.transition().duration(500).style('opacity', 0));
+        .on('mousemove', (event) => {
+          tooltip.style('left', (event.clientX + 12) + 'px').style('top', (event.clientY - 28) + 'px');
+        })
+        .on('mouseout', (event) => {
+          d3.select(event.currentTarget).style('opacity', 1);
+          tooltip.transition().duration(400).style('opacity', 0);
+        });
 
       svg.append('g')
         .attr('transform', `translate(0,${height - margin.bottom})`)

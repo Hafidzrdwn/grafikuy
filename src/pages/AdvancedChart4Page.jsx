@@ -64,31 +64,84 @@ const AdvancedChart4Page = () => {
 
     const tooltip = d3.select(tooltipRef.current)
       .style('opacity', 0)
-      .style('position', 'absolute')
+      .style('position', 'fixed')
+      .style('z-index', '9999')
       .style('background', 'white')
       .style('border', '1px solid #ccc')
       .style('border-radius', '6px')
       .style('padding', '10px 14px')
       .style('pointer-events', 'none')
       .style('font-size', '12px')
-      .style('box-shadow', '0 4px 12px rgb(0 0 0 / 0.15)');
+      .style('box-shadow', '0 4px 12px rgb(0 0 0 / 0.15)')
+      .style('color', '#333');
 
-    // Group data
-    const rolled = d3.rollup(filteredData, v => d3.sum(v, d => Number(d[config.valCol]) || 0), d => {
-      let dateVal = d[config.dateCol];
-      if (typeof dateVal === 'number' && dateVal > 40000 && dateVal < 50000) {
-        dateVal = new Date((dateVal - 25569) * 86400 * 1000);
-      } else if (!(dateVal instanceof Date)) {
-        dateVal = new Date(dateVal);
+    // Date formatter
+    const formatDate = (rawVal) => {
+      let d;
+      if (typeof rawVal === 'number' && rawVal > 40000 && rawVal < 50000) {
+        d = new Date((rawVal - 25569) * 86400 * 1000);
+      } else if (rawVal instanceof Date) {
+        d = rawVal;
+      } else {
+        d = new Date(rawVal);
       }
-      return isNaN(dateVal) ? String(d[config.dateCol]) : dateVal.toISOString().split('T')[0];
-    }, d => d[config.catCol]);
+      
+      if (!d || isNaN(d.getTime())) return String(rawVal);
+      
+      const fmt = config.dateFormat || 'month-year';
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const y = d.getFullYear();
+      const m = d.getMonth();
+      
+      switch (fmt) {
+        case 'year': return String(y);
+        case 'month': return months[m];
+        case 'month-year': return `${months[m]} ${y}`;
+        case 'quarter': return `Q${Math.floor(m / 3) + 1} ${y}`;
+        case 'day': return d.toISOString().split('T')[0];
+        default: return d.toISOString().split('T')[0];
+      }
+    };
 
-    const keys = Array.from(new Set(filteredData.map(d => String(d[config.catCol]))));
-    const dataFormatted = Array.from(rolled, ([date, map]) => {
-      const obj = { date: new Date(date) };
-      if (isNaN(obj.date)) obj.date = date;
-      keys.forEach(k => { obj[k] = map.get(k) || 0; });
+    // Aggregation function
+    const aggFn = config.aggType || 'sum';
+
+    // Group data by formatted date, then by category
+    const grouped = new Map();
+    const catTotals = new Map();
+    
+    filteredData.forEach(row => {
+      const dateKey = formatDate(row[config.dateCol]);
+      const catVal = String(row[config.catCol]);
+      const val = Number(row[config.valCol]) || 0;
+      
+      if (!grouped.has(dateKey)) grouped.set(dateKey, new Map());
+      const dateMap = grouped.get(dateKey);
+      if (!dateMap.has(catVal)) dateMap.set(catVal, []);
+      dateMap.get(catVal).push(val);
+      
+      catTotals.set(catVal, (catTotals.get(catVal) || 0) + val);
+    });
+
+    // Apply Top N filter
+    const topN = config.topN || 7;
+    const sortedCats = Array.from(catTotals.entries()).sort((a, b) => b[1] - a[1]);
+    const keys = sortedCats.slice(0, topN).map(([k]) => k);
+
+    // Build formatted data
+    const dataFormatted = Array.from(grouped, ([dateKey, catMap]) => {
+      const obj = { date: new Date(dateKey) };
+      if (isNaN(obj.date)) obj.date = dateKey;
+      keys.forEach(k => {
+        const vals = catMap.get(k) || [];
+        if (aggFn === 'avg' && vals.length > 0) {
+          obj[k] = vals.reduce((a, b) => a + b, 0) / vals.length;
+        } else if (aggFn === 'count') {
+          obj[k] = vals.length;
+        } else {
+          obj[k] = vals.reduce((a, b) => a + b, 0);
+        }
+      });
       return obj;
     }).sort((a, b) => d3.ascending(a.date, b.date));
 
@@ -125,11 +178,11 @@ const AdvancedChart4Page = () => {
         d3.select(event.currentTarget).attr('opacity', 1);
         tooltip.transition().duration(200).style('opacity', 0.95);
         tooltip.html(`<strong>${d.key}</strong>`)
-          .style('left', (event.pageX + 12) + 'px')
-          .style('top', (event.pageY - 28) + 'px');
+          .style('left', (event.clientX + 14) + 'px')
+          .style('top', (event.clientY - 30) + 'px');
       })
       .on('mousemove', (event) => {
-        tooltip.style('left', (event.pageX + 12) + 'px').style('top', (event.pageY - 28) + 'px');
+        tooltip.style('left', (event.clientX + 14) + 'px').style('top', (event.clientY - 30) + 'px');
       })
       .on('mouseout', (event) => {
         d3.select(event.currentTarget).attr('opacity', 0.85);
