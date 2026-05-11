@@ -142,7 +142,7 @@ const DashboardPage = () => {
     const title = chartConfig.title || `${meas} by ${dim}`;
 
     return (
-      <Card key={chartConfig.id || chartConfig.type + dim} className="flex flex-col h-112.5">
+      <Card key={chartConfig.id || chartConfig.type + dim} className="flex flex-col h-full relative overflow-hidden">
         <h3 className="font-semibold text-lg text-(--color-dark) dark:text-white mb-4">{title}</h3>
         <div className="flex-1 relative"><ChartComp data={chartData} orientation={chartConfig.orientation} /></div>
         <InsightAccordion insight={`Displaying ${chartConfig.type === 'ScatterChart' ? 'distribution of' : 'aggregated values for'} ${meas} by ${dim}.`} />
