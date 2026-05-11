@@ -1,5 +1,6 @@
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useState, useRef } from 'react';
 import { DataContext } from '../context/DataContext';
+import * as d3 from 'd3';
 import PageTitle from '../components/ui/PageTitle';
 import Card from '../components/ui/Card';
 import InsightAccordion from '../components/dashboard/InsightAccordion';
@@ -11,13 +12,14 @@ import Button from '../components/ui/Button';
 import { Settings2 } from 'lucide-react';
 import { updateDatasetConfig } from '../services/firebase';
 import { flatToGraph, applyFilters } from '../services/aggregationEngine';
-import ReactECharts from 'echarts-for-react';
 
 const AdvancedChart3Page = () => {
   const { selectedDataset, parsedData, schema, loading } = useContext(DataContext);
   const [isEditing, setIsEditing] = useState(false);
   const [config, setConfig] = useState(null);
   const [filters, setFilters] = useState({});
+  const svgRef = useRef();
+  const tooltipRef = useRef();
 
   useEffect(() => {
     if (selectedDataset) {
@@ -29,7 +31,7 @@ const AdvancedChart3Page = () => {
     setConfig(newConfig);
     if (selectedDataset?.id) {
       try {
-        await updateDatasetConfig(selectedDataset.id, { ...selectedDataset.dashboardConfig, advancedChart3Config: newConfig }, 'advancedChart3Config');
+        await updateDatasetConfig(selectedDataset.id, newConfig, 'advancedChart3Config');
       } catch (e) {
         console.error("Failed to save config", e);
       }
@@ -40,68 +42,108 @@ const AdvancedChart3Page = () => {
 
   const isCompatible = () => {
     if (!schema) return false;
-    if (!isConfigured) return true; // Still compatible for building
-    // Check if the configured columns exist in schema
+    if (!isConfigured) return true;
     const colNames = schema.columns.map(c => c.name);
     return config.dimensions.every(dim => colNames.includes(dim));
   };
 
   const handleFilterChange = (key, value) => setFilters(prev => ({ ...prev, [key]: value }));
-
   const filteredData = parsedData ? applyFilters(parsedData, filters) : [];
 
   const graphData = isConfigured && filteredData ? flatToGraph(filteredData, config.dimensions, config.weightCol, config.aggType) : { nodes: [], links: [] };
 
-  const option = {
-    tooltip: {
-      trigger: 'item',
-      formatter: function (params) {
-        if (params.dataType === 'node') {
-          return `Level (${params.data.category}): ${params.data.name}<br/>Weight: ${params.data.value}`;
-        } else {
-          return `${params.data.source} > ${params.data.target}<br/>Weight: ${params.data.value}`;
-        }
-      }
-    },
-    series: [
-      {
-        type: 'graph',
-        layout: 'force',
-        data: graphData.nodes,
-        links: graphData.links,
-        roam: true,
-        label: {
-          show: true,
-          position: 'right',
-          formatter: '{b}'
-        },
-        force: {
-          repulsion: 100,
-          edgeLength: 50
-        },
-        itemStyle: {
-          color: function(params) {
-            // Pick a color based on category/level
-            const levels = config.dimensions || [];
-            const idx = levels.indexOf(params.data.category);
-            const colors = ['#3F72AF', '#112D4E', '#80C4E9', '#96C9F4', '#5A96E3'];
-            return colors[idx % colors.length] || '#112D4E';
-          }
-        },
-        lineStyle: {
-          color: 'source',
-          curveness: 0.3
-        }
-      }
-    ]
-  };
+  useEffect(() => {
+    if (!isConfigured || !svgRef.current || graphData.nodes.length === 0) return;
+
+    const width = 800, height = 600;
+    const svg = d3.select(svgRef.current)
+      .attr('viewBox', [0, 0, width, height])
+      .style('width', '100%')
+      .style('height', 'auto');
+    svg.selectAll('*').remove();
+
+    const tooltip = d3.select(tooltipRef.current)
+      .style('opacity', 0)
+      .style('position', 'absolute')
+      .style('background', 'white')
+      .style('border', '1px solid #ccc')
+      .style('border-radius', '6px')
+      .style('padding', '10px 14px')
+      .style('pointer-events', 'none')
+      .style('font-size', '12px')
+      .style('box-shadow', '0 4px 12px rgb(0 0 0 / 0.15)');
+
+    const levels = config.dimensions || [];
+    const colors = ['#3F72AF', '#112D4E', '#80C4E9', '#96C9F4', '#5A96E3'];
+
+    // Clone data for simulation
+    const nodes = graphData.nodes.map(n => ({ ...n }));
+    const links = graphData.links.map(l => ({ source: l.source, target: l.target, value: l.value }));
+
+    const simulation = d3.forceSimulation(nodes)
+      .force('link', d3.forceLink(links).id(d => d.id).distance(60))
+      .force('charge', d3.forceManyBody().strength(-120))
+      .force('center', d3.forceCenter(width / 2, height / 2))
+      .force('collision', d3.forceCollide().radius(d => d.symbolSize / 2 + 5));
+
+    const g = svg.append('g');
+    svg.call(d3.zoom().scaleExtent([0.3, 5]).on('zoom', e => g.attr('transform', e.transform)));
+
+    const link = g.append('g')
+      .attr('stroke', '#999')
+      .attr('stroke-opacity', 0.4)
+      .selectAll('line')
+      .data(links)
+      .join('line')
+      .attr('stroke-width', d => Math.max(1, Math.min(d.value / 100, 4)));
+
+    const node = g.append('g')
+      .attr('stroke', '#fff')
+      .attr('stroke-width', 1.5)
+      .selectAll('circle')
+      .data(nodes)
+      .join('circle')
+      .attr('r', d => Math.max(4, d.symbolSize / 3))
+      .attr('fill', d => {
+        const idx = levels.indexOf(d.category);
+        return colors[idx % colors.length] || '#112D4E';
+      })
+      .call(d3.drag()
+        .on('start', e => { if (!e.active) simulation.alphaTarget(0.3).restart(); e.subject.fx = e.subject.x; e.subject.fy = e.subject.y; })
+        .on('drag', e => { e.subject.fx = e.x; e.subject.fy = e.y; })
+        .on('end', e => { if (!e.active) simulation.alphaTarget(0); e.subject.fx = null; e.subject.fy = null; }))
+      .on('mouseover', (event, d) => {
+        d3.select(event.currentTarget).attr('r', Math.max(6, d.symbolSize / 2));
+        const val = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(d.value);
+        tooltip.transition().duration(200).style('opacity', 0.95);
+        tooltip.html(`<strong>${d.name}</strong><br/>Level: ${d.category}<br/>Weight: ${val}`)
+          .style('left', (event.pageX + 12) + 'px')
+          .style('top', (event.pageY - 28) + 'px');
+      })
+      .on('mouseout', (event, d) => {
+        d3.select(event.currentTarget).attr('r', Math.max(4, d.symbolSize / 3));
+        tooltip.transition().duration(400).style('opacity', 0);
+      });
+
+    node.append('title').text(d => d.name);
+
+    simulation.on('tick', () => {
+      link
+        .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+        .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+      node
+        .attr('cx', d => d.x).attr('cy', d => d.y);
+    });
+
+    return () => { simulation.stop(); svg.selectAll('*').remove(); d3.select(tooltipRef.current).style('opacity', 0); };
+  }, [graphData, isConfigured, config]);
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <PageTitle title="Force Directed Graph" />
-          <p className="text-gray-500 dark:text-gray-400">Visualize complex network relationships using Apache ECharts.</p>
+          <p className="text-gray-500 dark:text-gray-400">Visualize complex network relationships using D3.js.</p>
         </div>
         {selectedDataset && (
           <Button variant={isEditing ? "primary" : "secondary"} onClick={() => setIsEditing(!isEditing)}>
@@ -137,13 +179,16 @@ const AdvancedChart3Page = () => {
       ) : !isCompatible() ? (
         <EmptyState title="Incompatible Data Mapping" description="The selected columns do not exist in the current dataset schema." />
       ) : !isConfigured ? (
-        <EmptyState title="Build Your Advanced Chart" description="Your chart is empty. Click 'Edit Chart' to define source and target nodes." />
+        <EmptyState title="Build Your Advanced Chart" description="Your chart is empty. Click 'Edit Chart' to define hierarchy levels." />
       ) : (
         <>
           <Card className="w-full min-h-[500px] p-0 relative">
-            <ReactECharts option={option} style={{ height: '600px', width: '100%' }} />
+            <div className="relative w-full h-full">
+              <svg ref={svgRef} className="w-full h-full min-h-[600px]" />
+              <div ref={tooltipRef} className="dark:text-gray-800" />
+            </div>
           </Card>
-          <InsightAccordion insight={`Network graph mapping ${graphData.nodes.length} unique nodes and ${graphData.links.length} connections.`} />
+          <InsightAccordion insight={`Network graph mapping ${graphData.nodes.length} unique nodes and ${graphData.links.length} connections. Drag nodes to interact.`} />
         </>
       )}
     </div>

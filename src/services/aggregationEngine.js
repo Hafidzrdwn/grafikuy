@@ -31,6 +31,37 @@
  */
 
 /**
+ * Formats a date value according to the specified format.
+ * Used when a date column is selected as a chart dimension.
+ */
+export const formatDateValue = (rawValue, format) => {
+  if (!format || format === 'auto') return String(rawValue);
+  
+  let d;
+  if (rawValue instanceof Date) {
+    d = rawValue;
+  } else if (typeof rawValue === 'string' || typeof rawValue === 'number') {
+    d = new Date(rawValue);
+  }
+  
+  if (!d || isNaN(d.getTime())) return String(rawValue);
+  
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const monthsShort = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const y = d.getFullYear();
+  const m = d.getMonth();
+  
+  switch (format) {
+    case 'year': return String(y);
+    case 'month': return months[m];
+    case 'month-year': return `${monthsShort[m]} ${y}`;
+    case 'quarter': return `Q${Math.floor(m / 3) + 1} ${y}`;
+    case 'day': return d.toISOString().split('T')[0];
+    default: return String(rawValue);
+  }
+};
+
+/**
  * Applies active filters to the raw dataset.
  * @param {Array} data - Raw array of objects (e.g., 10,000 rows)
  * @param {Object} activeFilters - Format: { "Region": "North", "Category": "Electronics" }
@@ -39,17 +70,43 @@
 export const applyFilters = (data, activeFilters) => {
   if (!activeFilters || Object.keys(activeFilters).length === 0) return data;
 
+  // Separate date-range filters from regular filters
+  const dateRanges = {};
+  const regularFilters = {};
+  
+  for (const [key, value] of Object.entries(activeFilters)) {
+    if (!value) continue;
+    if (key.endsWith('__from')) {
+      const col = key.replace('__from', '');
+      if (!dateRanges[col]) dateRanges[col] = {};
+      dateRanges[col].from = new Date(value);
+    } else if (key.endsWith('__to')) {
+      const col = key.replace('__to', '');
+      if (!dateRanges[col]) dateRanges[col] = {};
+      dateRanges[col].to = new Date(value);
+    } else {
+      regularFilters[key] = value;
+    }
+  }
+
   return data.filter(row => {
-    for (const [column, filterValue] of Object.entries(activeFilters)) {
-      if (!filterValue) continue; // Skip empty filters
-      
+    // Check regular filters
+    for (const [column, filterValue] of Object.entries(regularFilters)) {
+      if (!filterValue) continue;
       const cellValue = row[column];
-      
-      // Exact match for categorical / string
       if (String(cellValue) !== String(filterValue)) {
         return false;
       }
     }
+    
+    // Check date-range filters
+    for (const [column, range] of Object.entries(dateRanges)) {
+      const cellDate = new Date(row[column]);
+      if (isNaN(cellDate.getTime())) return false;
+      if (range.from && cellDate < range.from) return false;
+      if (range.to && cellDate > new Date(range.to.getTime() + 86400000)) return false; // Include end date
+    }
+    
     return true;
   });
 };

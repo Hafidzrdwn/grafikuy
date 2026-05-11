@@ -1,5 +1,6 @@
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useState, useRef } from 'react';
 import { DataContext } from '../context/DataContext';
+import * as d3 from 'd3';
 import PageTitle from '../components/ui/PageTitle';
 import Card from '../components/ui/Card';
 import InsightAccordion from '../components/dashboard/InsightAccordion';
@@ -11,13 +12,14 @@ import Button from '../components/ui/Button';
 import { Settings2 } from 'lucide-react';
 import { updateDatasetConfig } from '../services/firebase';
 import { flatToGraph, applyFilters } from '../services/aggregationEngine';
-import ReactECharts from 'echarts-for-react';
 
 const AdvancedChart1Page = () => {
   const { selectedDataset, parsedData, schema, loading } = useContext(DataContext);
   const [isEditing, setIsEditing] = useState(false);
   const [config, setConfig] = useState(null);
   const [filters, setFilters] = useState({});
+  const svgRef = useRef();
+  const tooltipRef = useRef();
 
   useEffect(() => {
     if (selectedDataset) {
@@ -46,26 +48,17 @@ const AdvancedChart1Page = () => {
   };
 
   const handleFilterChange = (key, value) => setFilters(prev => ({ ...prev, [key]: value }));
-
   const filteredData = parsedData ? applyFilters(parsedData, filters) : [];
 
-  // For Radial Tree, ECharts tree requires hierarchical data.
-  // We can convert the graph nodes/links into a tree.
+  // Build tree from graph
   const buildTree = (graph) => {
     if (!graph.nodes || graph.nodes.length === 0) return { name: 'Root', children: [] };
-    
-    // Find all nodes that are targets
     const targetSet = new Set(graph.links.map(l => l.target));
-    // Sources are nodes that are never targets
     let rootNodes = graph.nodes.filter(n => !targetSet.has(n.id));
-    
-    if (rootNodes.length === 0) {
-      // Cyclic graph fallback: just pick the first node
-      rootNodes = [graph.nodes[0]];
-    }
+    if (rootNodes.length === 0) rootNodes = [graph.nodes[0]];
 
     const buildChildren = (nodeId, depth) => {
-      if (depth > 5) return []; // Prevent infinite recursion in cyclic graphs
+      if (depth > 5) return [];
       const childrenLinks = graph.links.filter(l => l.source === nodeId);
       return childrenLinks.map(l => {
         const tgtNode = graph.nodes.find(n => n.id === l.target);
@@ -78,7 +71,7 @@ const AdvancedChart1Page = () => {
     };
 
     const treeData = {
-      name: 'Root',
+      name: 'All Data',
       children: rootNodes.map(n => ({
         name: n.name,
         value: n.value,
@@ -86,75 +79,104 @@ const AdvancedChart1Page = () => {
       }))
     };
 
-    // If there's only one root node, simplify
-    if (treeData.children.length === 1) {
-      return treeData.children[0];
-    }
-
+    if (treeData.children.length === 1) return treeData.children[0];
     return treeData;
   };
 
   const graphData = isConfigured && filteredData ? flatToGraph(filteredData, config.dimensions, config.weightCol, config.aggType) : { nodes: [], links: [] };
   const treeData = buildTree(graphData);
 
-  const option = {
-    tooltip: {
-      trigger: 'item',
-      triggerOn: 'mousemove',
-      formatter: function(params) {
-        const val = new Intl.NumberFormat('en-US', { notation: 'compact' }).format(params.value);
-        return `${params.name}: ${val}`;
-      }
-    },
-    series: [
-      {
-        type: 'tree',
-        data: [treeData],
-        top: '5%',
-        bottom: '5%',
-        left: '5%',
-        right: '5%',
-        layout: 'radial',
-        symbol: 'circle',
-        symbolSize: 12,
-        initialTreeDepth: -1,
-        animationDurationUpdate: 750,
-        roam: 'move',
-        expandAndCollapse: true,
-        label: {
-          show: true,
-          position: 'right',
-          distance: 7,
-          formatter: function(params) {
-            if (!params.value) return params.name;
-            const val = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(params.value);
-            return `{name|${params.name}} {val|${val}}`;
-          },
-          rich: {
-            name: { color: '#112D4E', fontSize: 12, fontWeight: 'bold' },
-            val: { color: '#3F72AF', fontSize: 11, fontWeight: 'bold' }
-          }
-        },
-        itemStyle: {
-          color: '#3F72AF',
-          borderColor: '#112D4E',
-          borderWidth: 1.5
-        },
-        lineStyle: {
-          color: '#ccc',
-          curveness: 0.5,
-          width: 1.5
-        }
-      }
-    ]
-  };
+  useEffect(() => {
+    if (!isConfigured || !svgRef.current || graphData.nodes.length === 0) return;
+    
+    const width = 900, height = 900;
+    const cx = width / 2, cy = height / 2;
+    const radius = Math.min(width, height) / 2 - 100;
+
+    const svg = d3.select(svgRef.current)
+      .attr('viewBox', [-cx, -cy, width, height])
+      .style('width', '100%')
+      .style('height', 'auto')
+      .style('font', '11px sans-serif');
+    svg.selectAll('*').remove();
+
+    const tooltip = d3.select(tooltipRef.current)
+      .style('opacity', 0)
+      .style('position', 'absolute')
+      .style('background', 'white')
+      .style('border', '1px solid #ccc')
+      .style('border-radius', '6px')
+      .style('padding', '8px 12px')
+      .style('pointer-events', 'none')
+      .style('font-size', '12px')
+      .style('box-shadow', '0 4px 12px rgb(0 0 0 / 0.15)');
+
+    const root = d3.hierarchy(treeData).sort((a, b) => d3.ascending(a.data.name, b.data.name));
+    d3.cluster().size([2 * Math.PI, radius])(root);
+
+    const g = svg.append('g');
+    svg.call(d3.zoom().scaleExtent([0.3, 5]).on('zoom', e => g.attr('transform', e.transform)));
+
+    // Links
+    g.append('g')
+      .attr('fill', 'none')
+      .attr('stroke', '#3F72AF')
+      .attr('stroke-opacity', 0.35)
+      .attr('stroke-width', 1.5)
+      .selectAll('path')
+      .data(root.links())
+      .join('path')
+      .attr('d', d3.linkRadial().angle(d => d.x).radius(d => d.y));
+
+    // Nodes
+    const node = g.append('g')
+      .attr('stroke-linejoin', 'round')
+      .attr('stroke-width', 3)
+      .selectAll('g')
+      .data(root.descendants())
+      .join('g')
+      .attr('transform', d => `rotate(${d.x * 180 / Math.PI - 90}) translate(${d.y},0)`);
+
+    node.append('circle')
+      .attr('fill', d => d.children ? '#3F72AF' : '#112D4E')
+      .attr('r', d => d.children ? 4 : 3)
+      .on('mouseover', (event, d) => {
+        d3.select(event.currentTarget).attr('r', 7).attr('fill', '#5A96E3');
+        const val = d.data.value ? new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(d.data.value) : '';
+        tooltip.transition().duration(200).style('opacity', 0.95);
+        tooltip.html(`<strong>${d.data.name}</strong>${val ? '<br/>Value: ' + val : ''}`)
+          .style('left', (event.pageX + 12) + 'px')
+          .style('top', (event.pageY - 28) + 'px');
+      })
+      .on('mouseout', (event, d) => {
+        d3.select(event.currentTarget).attr('r', d.children ? 4 : 3).attr('fill', d.children ? '#3F72AF' : '#112D4E');
+        tooltip.transition().duration(400).style('opacity', 0);
+      });
+
+    // Labels with value
+    node.append('text')
+      .attr('dy', '0.31em')
+      .attr('x', d => d.x < Math.PI === !d.children ? 6 : -6)
+      .attr('text-anchor', d => d.x < Math.PI === !d.children ? 'start' : 'end')
+      .attr('transform', d => d.x >= Math.PI ? 'rotate(180)' : null)
+      .text(d => {
+        const val = d.data.value ? new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(d.data.value) : '';
+        return val ? `${d.data.name} ${val}` : d.data.name;
+      })
+      .attr('fill', '#112D4E')
+      .attr('font-weight', d => d.children ? 'bold' : 'normal')
+      .attr('font-size', d => d.depth === 0 ? '14px' : '11px')
+      .clone(true).lower().attr('stroke', 'white');
+
+    return () => { svg.selectAll('*').remove(); d3.select(tooltipRef.current).style('opacity', 0); };
+  }, [graphData, isConfigured, treeData]);
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <PageTitle title="Radial Tree Diagram" />
-          <p className="text-gray-500 dark:text-gray-400">Visualize hierarchical structure radiating outward using Apache ECharts.</p>
+          <p className="text-gray-500 dark:text-gray-400">Visualize hierarchical structure radiating outward using D3.js.</p>
         </div>
         {selectedDataset && (
           <Button variant={isEditing ? "primary" : "secondary"} onClick={() => setIsEditing(!isEditing)}>
@@ -190,13 +212,16 @@ const AdvancedChart1Page = () => {
       ) : !isCompatible() ? (
         <EmptyState title="Incompatible Data Mapping" description="The selected columns do not exist in the current dataset schema." />
       ) : !isConfigured ? (
-        <EmptyState title="Build Your Advanced Chart" description="Your chart is empty. Click 'Edit Chart' to define source and target nodes." />
+        <EmptyState title="Build Your Advanced Chart" description="Your chart is empty. Click 'Edit Chart' to define hierarchy levels." />
       ) : (
         <>
           <Card className="w-full min-h-[700px] p-0 relative overflow-hidden bg-gray-50 dark:bg-gray-900 border-2 dark:border-[#3F72AF]/30">
-            <ReactECharts option={option} style={{ height: '700px', width: '100%' }} />
+            <div className="relative w-full h-full">
+              <svg ref={svgRef} className="w-full h-full min-h-[700px]" />
+              <div ref={tooltipRef} className="dark:text-gray-800" />
+            </div>
           </Card>
-          <InsightAccordion insight="Radial trees efficiently display hierarchical relationships. Use the mouse wheel to zoom in/out, and click and drag to pan around the graph." />
+          <InsightAccordion insight="Radial trees display hierarchical relationships. Use scroll to zoom and drag to pan." />
         </>
       )}
     </div>

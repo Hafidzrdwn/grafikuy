@@ -3,7 +3,7 @@ import Card from '../ui/Card';
 import Button from '../ui/Button';
 import { Plus, Trash2, Settings, Save } from 'lucide-react';
 
-const DashboardBuilderPanel = ({ config, onSave, columns, onClose }) => {
+const DashboardBuilderPanel = ({ config, onSave, columns, schema, onClose }) => {
   const [activeTab, setActiveTab] = useState('charts'); // filters, kpis, charts
   const [draftConfig, setDraftConfig] = useState(config || { filters: [], kpiCards: [], charts: [] });
 
@@ -14,10 +14,19 @@ const DashboardBuilderPanel = ({ config, onSave, columns, onClose }) => {
     }
   }, [config]);
 
+  const getColumnType = (colName) => {
+    if (!schema || !schema.columns) return 'string';
+    const col = schema.columns.find(c => c.name === colName);
+    return col ? col.type : 'string';
+  };
+
   const handleAddFilter = () => {
+    const col = columns[0] || '';
+    const colType = getColumnType(col);
+    const defaultType = colType === 'date' ? 'date-range' : 'select';
     setDraftConfig({
       ...draftConfig,
-      filters: [...(draftConfig.filters || []), { column: columns[0] || '', type: 'select' }]
+      filters: [...(draftConfig.filters || []), { column: col, type: defaultType }]
     });
   };
 
@@ -90,24 +99,34 @@ const DashboardBuilderPanel = ({ config, onSave, columns, onClose }) => {
       <div className="space-y-4">
         {activeTab === 'filters' && (
           <div>
-            {draftConfig.filters?.map((f, i) => (
-              <div key={i} className="flex gap-4 items-center bg-white dark:bg-gray-800 p-3 rounded-lg border dark:border-[#3F72AF]/30 mb-2">
-                <div className="flex-1">
-                  <label className="text-xs text-gray-500 block mb-1">Column</label>
-                  <select className="w-full p-2 border rounded text-sm dark:bg-gray-700 dark:text-white" value={f.column} onChange={(e) => updateItem('filters', i, 'column', e.target.value)}>
-                    {columns.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
+            {draftConfig.filters?.map((f, i) => {
+              const colType = getColumnType(f.column);
+              return (
+                <div key={i} className="flex gap-4 items-center bg-white dark:bg-gray-800 p-3 rounded-lg border dark:border-[#3F72AF]/30 mb-2">
+                  <div className="flex-1">
+                    <label className="text-xs text-gray-500 block mb-1">Column</label>
+                    <select className="w-full p-2 border rounded text-sm dark:bg-gray-700 dark:text-white" value={f.column} onChange={(e) => {
+                      const newColType = getColumnType(e.target.value);
+                      const newType = newColType === 'date' ? 'date-range' : 'select';
+                      const updated = [...(draftConfig.filters || [])];
+                      updated[i] = { ...updated[i], column: e.target.value, type: newType };
+                      setDraftConfig({ ...draftConfig, filters: updated });
+                    }}>
+                      {columns.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-xs text-gray-500 block mb-1">Filter Type</label>
+                    <select className="w-full p-2 border rounded text-sm dark:bg-gray-700 dark:text-white" value={f.type} onChange={(e) => updateItem('filters', i, 'type', e.target.value)}>
+                      <option value="select">Dropdown (Select)</option>
+                      <option value="range">Number Range</option>
+                      {colType === 'date' && <option value="date-range">Date Range</option>}
+                    </select>
+                  </div>
+                  <button onClick={() => removeItem('filters', i)} className="p-2 text-red-500 hover:bg-red-50 rounded mt-4"><Trash2 className="w-4 h-4" /></button>
                 </div>
-                <div className="flex-1">
-                  <label className="text-xs text-gray-500 block mb-1">Filter Type</label>
-                  <select className="w-full p-2 border rounded text-sm dark:bg-gray-700 dark:text-white" value={f.type} onChange={(e) => updateItem('filters', i, 'type', e.target.value)}>
-                    <option value="select">Dropdown (Select)</option>
-                    <option value="range">Number Range</option>
-                  </select>
-                </div>
-                <button onClick={() => removeItem('filters', i)} className="p-2 text-red-500 hover:bg-red-50 rounded mt-4"><Trash2 className="w-4 h-4" /></button>
-              </div>
-            ))}
+              );
+            })}
             <Button variant="secondary" size="sm" onClick={handleAddFilter}><Plus className="w-4 h-4 mr-1" /> Add Filter</Button>
           </div>
         )}
@@ -205,6 +224,19 @@ const DashboardBuilderPanel = ({ config, onSave, columns, onClose }) => {
                         {columns.map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </div>
+                    {chart.type !== 'ScatterChart' && getColumnType(chart.dimension) === 'date' && (
+                      <div className="flex-1">
+                        <label className="text-xs text-gray-500 block mb-1">Date Format</label>
+                        <select className="w-full p-1.5 border rounded text-sm dark:bg-gray-700 dark:text-white" value={chart.dateFormat || 'auto'} onChange={(e) => updateItem('charts', i, 'dateFormat', e.target.value)}>
+                          <option value="auto">Auto (Raw)</option>
+                          <option value="year">Year (2024)</option>
+                          <option value="month">Month (January)</option>
+                          <option value="month-year">Month-Year (Jan 2024)</option>
+                          <option value="quarter">Quarter (Q1 2024)</option>
+                          <option value="day">Day (2024-01-15)</option>
+                        </select>
+                      </div>
+                    )}
                     <div className="flex-1">
                       <label className="text-xs text-gray-500 block mb-1">{chart.type === 'ScatterChart' ? 'Y-Axis (Measure)' : 'Measure (Value)'}</label>
                       <select className="w-full p-1.5 border rounded text-sm dark:bg-gray-700 dark:text-white" value={chart.measure || chart.yAxis || chart.value} onChange={(e) => updateItem('charts', i, 'measure', e.target.value)}>

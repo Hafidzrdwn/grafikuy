@@ -1,5 +1,7 @@
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useState, useRef } from 'react';
 import { DataContext } from '../context/DataContext';
+import * as d3 from 'd3';
+import * as topojson from 'topojson-client';
 import PageTitle from '../components/ui/PageTitle';
 import Card from '../components/ui/Card';
 import InsightAccordion from '../components/dashboard/InsightAccordion';
@@ -11,8 +13,6 @@ import Button from '../components/ui/Button';
 import { Settings2 } from 'lucide-react';
 import { updateDatasetConfig } from '../services/firebase';
 import { applyFilters } from '../services/aggregationEngine';
-import ReactECharts from 'echarts-for-react';
-import * as echarts from 'echarts';
 
 const AdvancedChart2Page = () => {
   const { selectedDataset, parsedData, schema, loading } = useContext(DataContext);
@@ -20,18 +20,13 @@ const AdvancedChart2Page = () => {
   const [config, setConfig] = useState(null);
   const [geoData, setGeoData] = useState(null);
   const [filters, setFilters] = useState({});
+  const svgRef = useRef();
+  const tooltipRef = useRef();
 
   useEffect(() => {
     fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
       .then(res => res.json())
-      .then(data => {
-        fetch('https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson')
-          .then(res => res.json())
-          .then(geoJson => {
-            echarts.registerMap('world', geoJson);
-            setGeoData(geoJson);
-          });
-      })
+      .then(setGeoData)
       .catch(console.error);
   }, []);
 
@@ -65,76 +60,93 @@ const AdvancedChart2Page = () => {
 
   const filteredData = parsedData ? applyFilters(parsedData, filters) : [];
 
-  const buildMapData = () => {
-    if (!isConfigured || !filteredData || filteredData.length === 0) return [];
+  useEffect(() => {
+    if (!isConfigured || !filteredData || !geoData || !svgRef.current) return;
 
+    const width = 975, height = 610;
+    const svg = d3.select(svgRef.current)
+      .attr('viewBox', [0, 0, width, height])
+      .style('width', '100%')
+      .style('height', 'auto');
+    svg.selectAll('*').remove();
+
+    const tooltip = d3.select(tooltipRef.current)
+      .style('opacity', 0)
+      .style('position', 'absolute')
+      .style('background', 'white')
+      .style('border', '1px solid #ccc')
+      .style('border-radius', '6px')
+      .style('padding', '10px 14px')
+      .style('pointer-events', 'none')
+      .style('font-size', '12px')
+      .style('box-shadow', '0 4px 12px rgb(0 0 0 / 0.15)');
+
+    // Build data map with aggregation
     const dataMap = new Map();
-    filteredData.forEach(row => {
-      const loc = String(row[config.geoCol]).trim();
-      const val = Number(row[config.valCol]) || 0;
-      if (!dataMap.has(loc)) {
-        dataMap.set(loc, { sum: 0, count: 0 });
-      }
-      const current = dataMap.get(loc);
-      current.sum += val;
-      current.count += 1;
+    filteredData.forEach(d => {
+      const loc = String(d[config.geoCol]).trim();
+      const val = Number(d[config.valCol]) || 0;
+      if (!dataMap.has(loc)) dataMap.set(loc, { sum: 0, count: 0 });
+      const curr = dataMap.get(loc);
+      curr.sum += val;
+      curr.count += 1;
     });
 
-    return Array.from(dataMap.entries()).map(([name, stats]) => {
+    const aggMap = new Map();
+    for (const [name, stats] of dataMap.entries()) {
       const agg = config.aggType || 'sum';
       let finalVal = stats.sum;
       if (agg === 'avg') finalVal = stats.sum / stats.count;
       else if (agg === 'count') finalVal = stats.count;
-      return { name, value: finalVal };
-    });
-  };
+      aggMap.set(name, finalVal);
+    }
 
-  const mapData = buildMapData();
-  const maxVal = mapData.length > 0 ? Math.max(...mapData.map(d => d.value)) : 100;
+    const maxVal = d3.max(Array.from(aggMap.values())) || 1;
+    const colorScale = d3.scaleSequential(d3.interpolateBlues).domain([0, maxVal]);
+    const countries = topojson.feature(geoData, geoData.objects.countries);
+    const projection = d3.geoNaturalEarth1().fitSize([width, height], countries);
+    const path = d3.geoPath(projection);
 
-  const option = {
-    tooltip: {
-      trigger: 'item',
-      triggerOn: 'mousemove',
-      showDelay: 0,
-      transitionDuration: 0.2,
-      formatter: function(params) {
-        if (!params.value && params.value !== 0) return params.name;
-        const aggLabel = config.aggType === 'avg' ? 'Average' : config.aggType === 'count' ? 'Count' : 'Total';
-        const formattedVal = new Intl.NumberFormat().format(params.value);
-        return `<strong>${params.name}</strong><br/>${aggLabel} of ${config.valCol}: ${formattedVal}`;
-      }
-    },
-    visualMap: {
-      left: 'right',
-      min: 0,
-      max: maxVal,
-      inRange: {
-        color: ['#E0F2FE', '#3F72AF', '#112D4E']
-      },
-      text: ['High', 'Low'],
-      calculable: true
-    },
-    series: [
-      {
-        name: 'Map Value',
-        type: 'map',
-        roam: true,
-        map: 'world',
-        emphasis: {
-          label: { show: true }
-        },
-        data: mapData
-      }
-    ]
-  };
+    const g = svg.append('g');
+    svg.call(d3.zoom().scaleExtent([1, 8]).on('zoom', e => g.attr('transform', e.transform)));
+
+    const aggLabel = config.aggType === 'avg' ? 'Average' : config.aggType === 'count' ? 'Count' : 'Total';
+
+    g.selectAll('path')
+      .data(countries.features)
+      .join('path')
+      .attr('fill', d => {
+        const val = aggMap.get(d.properties.name);
+        return val !== undefined ? colorScale(val) : '#e2e8f0';
+      })
+      .attr('d', path)
+      .attr('stroke', 'white')
+      .attr('stroke-width', 0.5)
+      .on('mouseover', (event, d) => {
+        d3.select(event.currentTarget).attr('stroke', '#112D4E').attr('stroke-width', 2);
+        const val = aggMap.get(d.properties.name);
+        const formattedVal = val !== undefined ? new Intl.NumberFormat().format(Math.round(val)) : 'No data';
+        tooltip.transition().duration(200).style('opacity', 0.95);
+        tooltip.html(
+          `<strong>${d.properties.name}</strong><br/>${aggLabel} of ${config.valCol}: ${formattedVal}`
+        )
+          .style('left', (event.pageX + 12) + 'px')
+          .style('top', (event.pageY - 28) + 'px');
+      })
+      .on('mouseout', (event) => {
+        d3.select(event.currentTarget).attr('stroke', 'white').attr('stroke-width', 0.5);
+        tooltip.transition().duration(400).style('opacity', 0);
+      });
+
+    return () => { svg.selectAll('*').remove(); d3.select(tooltipRef.current).style('opacity', 0); };
+  }, [filteredData, isConfigured, geoData, config]);
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <PageTitle title="Choropleth Map" />
-          <p className="text-gray-500 dark:text-gray-400">View geographical distribution using Apache ECharts.</p>
+          <p className="text-gray-500 dark:text-gray-400">View geographical distribution using D3.js.</p>
         </div>
         {selectedDataset && (
           <Button variant={isEditing ? "primary" : "secondary"} onClick={() => setIsEditing(!isEditing)}>
@@ -164,7 +176,7 @@ const AdvancedChart2Page = () => {
         />
       )}
 
-      {loading || (!geoData && selectedDataset) ? (
+      {(loading || (!geoData && selectedDataset)) ? (
         <div className="h-64 flex items-center justify-center"><Spinner /></div>
       ) : !selectedDataset ? (
         <EmptyState title="No Dataset Selected" description="Please set a primary dataset in Data Management first." />
@@ -174,10 +186,13 @@ const AdvancedChart2Page = () => {
         <EmptyState title="Build Your Advanced Chart" description="Your chart is empty. Click 'Edit Chart' to map geographical data." />
       ) : (
         <>
-          <Card className="w-full min-h-[500px] p-0 relative">
-            <ReactECharts option={option} style={{ height: '600px', width: '100%' }} />
+          <Card className="w-full min-h-[500px] p-0 relative overflow-hidden">
+            <div className="relative w-full h-full">
+              <svg ref={svgRef} className="w-full h-full max-h-[700px]" />
+              <div ref={tooltipRef} className="dark:text-gray-800" />
+            </div>
           </Card>
-          <InsightAccordion insight="Map visualization matches country names from data with the world geojson feature properties." />
+          <InsightAccordion insight="Map visualization matches country names from data with world atlas properties. Hover to see details." />
         </>
       )}
     </div>

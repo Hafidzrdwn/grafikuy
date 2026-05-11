@@ -15,7 +15,7 @@ import InsightAccordion from '../components/dashboard/InsightAccordion';
 import DashboardBuilderPanel from '../components/dashboard/DashboardBuilderPanel';
 import Button from '../components/ui/Button';
 import { Settings2 } from 'lucide-react';
-import { applyFilters, aggregateData } from '../services/aggregationEngine';
+import { applyFilters, aggregateData, formatDateValue } from '../services/aggregationEngine';
 import { updateDatasetConfig } from '../services/firebase';
 
 const DashboardPage = () => {
@@ -86,12 +86,29 @@ const DashboardPage = () => {
     const agg = chartConfig.aggType || 'sum';
     const isHorizontal = chartConfig.orientation === 'horizontal';
 
+    const dateFormat = chartConfig.dateFormat;
+
     if (chartConfig.type === 'BarChart' || chartConfig.type === 'LineChart') {
-      const aggResults = aggregateData(filteredData, dim, meas, agg);
-      chartData = aggResults.map(r => ({ label: String(r[dim]), value: r[meas] }));
+      let aggResults = aggregateData(filteredData, dim, meas, agg);
+      if (dateFormat && dateFormat !== 'auto') {
+        // Re-aggregate with formatted dates
+        const formatted = filteredData.map(r => ({ ...r, [`__fmt_${dim}`]: formatDateValue(r[dim], dateFormat) }));
+        const fmtDim = `__fmt_${dim}`;
+        aggResults = aggregateData(formatted, fmtDim, meas, agg);
+        chartData = aggResults.map(r => ({ label: String(r[fmtDim]), value: r[meas] }));
+      } else {
+        chartData = aggResults.map(r => ({ label: String(r[dim]), value: r[meas] }));
+      }
     } else if (chartConfig.type === 'PieChart') {
-      const aggResults = aggregateData(filteredData, dim, meas, agg);
-      chartData = aggResults.map(r => ({ id: String(r[dim]), label: String(r[dim]), value: r[meas] }));
+      let aggResults = aggregateData(filteredData, dim, meas, agg);
+      if (dateFormat && dateFormat !== 'auto') {
+        const formatted = filteredData.map(r => ({ ...r, [`__fmt_${dim}`]: formatDateValue(r[dim], dateFormat) }));
+        const fmtDim = `__fmt_${dim}`;
+        aggResults = aggregateData(formatted, fmtDim, meas, agg);
+        chartData = aggResults.map(r => ({ id: String(r[fmtDim]), label: String(r[fmtDim]), value: r[meas] }));
+      } else {
+        chartData = aggResults.map(r => ({ id: String(r[dim]), label: String(r[dim]), value: r[meas] }));
+      }
     } else if (chartConfig.type === 'ScatterChart') {
       chartData = filteredData.map(row => ({ 
         x: Number(row[dim]) || 0, 
@@ -134,7 +151,8 @@ const DashboardPage = () => {
           config={activeConfig} 
           onSave={handleSaveConfig} 
           onClose={() => setIsEditing(false)}
-          columns={schema?.columns?.map(c => c.name) || []} 
+          columns={schema?.columns?.map(c => c.name) || []}
+          schema={schema} 
         />
       )}
 

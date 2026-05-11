@@ -1,5 +1,6 @@
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useState, useRef } from 'react';
 import { DataContext } from '../context/DataContext';
+import * as d3 from 'd3';
 import PageTitle from '../components/ui/PageTitle';
 import Card from '../components/ui/Card';
 import InsightAccordion from '../components/dashboard/InsightAccordion';
@@ -11,13 +12,14 @@ import Button from '../components/ui/Button';
 import { Settings2 } from 'lucide-react';
 import { updateDatasetConfig } from '../services/firebase';
 import { applyFilters } from '../services/aggregationEngine';
-import ReactECharts from 'echarts-for-react';
 
 const AdvancedChart4Page = () => {
   const { selectedDataset, parsedData, schema, loading } = useContext(DataContext);
   const [isEditing, setIsEditing] = useState(false);
   const [config, setConfig] = useState(null);
   const [filters, setFilters] = useState({});
+  const svgRef = useRef();
+  const tooltipRef = useRef();
 
   useEffect(() => {
     if (selectedDataset) {
@@ -46,105 +48,119 @@ const AdvancedChart4Page = () => {
   };
 
   const handleFilterChange = (key, value) => setFilters(prev => ({ ...prev, [key]: value }));
-
   const filteredData = parsedData ? applyFilters(parsedData, filters) : [];
 
-  const buildStreamData = () => {
-    if (!isConfigured || !filteredData || filteredData.length === 0) return { xAxis: [], series: [], legend: [] };
+  useEffect(() => {
+    if (!isConfigured || !svgRef.current || !filteredData || filteredData.length === 0) return;
 
-    // Group by Date, then by Category, summing Value
-    const grouped = new Map();
-    const categories = new Set();
+    const width = 800, height = 500;
+    const margin = { top: 20, right: 30, bottom: 30, left: 50 };
 
-    filteredData.forEach(row => {
-      let dateVal = row[config.dateCol];
-      // Format date nicely if needed, or stringify
+    const svg = d3.select(svgRef.current)
+      .attr('viewBox', [0, 0, width, height])
+      .style('width', '100%')
+      .style('height', 'auto');
+    svg.selectAll('*').remove();
+
+    const tooltip = d3.select(tooltipRef.current)
+      .style('opacity', 0)
+      .style('position', 'absolute')
+      .style('background', 'white')
+      .style('border', '1px solid #ccc')
+      .style('border-radius', '6px')
+      .style('padding', '10px 14px')
+      .style('pointer-events', 'none')
+      .style('font-size', '12px')
+      .style('box-shadow', '0 4px 12px rgb(0 0 0 / 0.15)');
+
+    // Group data
+    const rolled = d3.rollup(filteredData, v => d3.sum(v, d => Number(d[config.valCol]) || 0), d => {
+      let dateVal = d[config.dateCol];
       if (typeof dateVal === 'number' && dateVal > 40000 && dateVal < 50000) {
-        // Excel serial date approximation (if any left over)
-        dateVal = new Date((dateVal - 25569) * 86400 * 1000).toISOString().split('T')[0];
-      } else if (dateVal instanceof Date) {
-        dateVal = dateVal.toISOString().split('T')[0];
-      } else {
-        dateVal = String(dateVal);
+        dateVal = new Date((dateVal - 25569) * 86400 * 1000);
+      } else if (!(dateVal instanceof Date)) {
+        dateVal = new Date(dateVal);
       }
+      return isNaN(dateVal) ? String(d[config.dateCol]) : dateVal.toISOString().split('T')[0];
+    }, d => d[config.catCol]);
 
-      const catVal = String(row[config.catCol]);
-      const val = Number(row[config.valCol]) || 0;
+    const keys = Array.from(new Set(filteredData.map(d => String(d[config.catCol]))));
+    const dataFormatted = Array.from(rolled, ([date, map]) => {
+      const obj = { date: new Date(date) };
+      if (isNaN(obj.date)) obj.date = date;
+      keys.forEach(k => { obj[k] = map.get(k) || 0; });
+      return obj;
+    }).sort((a, b) => d3.ascending(a.date, b.date));
 
-      categories.add(catVal);
+    if (dataFormatted.length === 0) return;
 
-      if (!grouped.has(dateVal)) {
-        grouped.set(dateVal, new Map());
-      }
-      const dateMap = grouped.get(dateVal);
-      dateMap.set(catVal, (dateMap.get(catVal) || 0) + val);
+    const series = d3.stack().keys(keys).offset(d3.stackOffsetWiggle)(dataFormatted);
+
+    const x = d3.scaleTime()
+      .domain(d3.extent(dataFormatted, d => d.date))
+      .range([margin.left, width - margin.right]);
+
+    const y = d3.scaleLinear()
+      .domain([d3.min(series, d => d3.min(d, d => d[0])), d3.max(series, d => d3.max(d, d => d[1]))])
+      .range([height - margin.bottom, margin.top]);
+
+    const color = d3.scaleOrdinal()
+      .domain(keys)
+      .range(['#3F72AF', '#112D4E', '#80C4E9', '#96C9F4', '#5A96E3', '#2A4A7F', '#DBE2EF', '#526D82']);
+
+    const area = d3.area()
+      .curve(d3.curveCatmullRom)
+      .x(d => x(d.data.date))
+      .y0(d => y(d[0]))
+      .y1(d => y(d[1]));
+
+    svg.selectAll('path.stream')
+      .data(series)
+      .join('path')
+      .attr('class', 'stream')
+      .attr('fill', ({ key }) => color(key))
+      .attr('d', area)
+      .attr('opacity', 0.85)
+      .on('mouseover', (event, d) => {
+        d3.select(event.currentTarget).attr('opacity', 1);
+        tooltip.transition().duration(200).style('opacity', 0.95);
+        tooltip.html(`<strong>${d.key}</strong>`)
+          .style('left', (event.pageX + 12) + 'px')
+          .style('top', (event.pageY - 28) + 'px');
+      })
+      .on('mousemove', (event) => {
+        tooltip.style('left', (event.pageX + 12) + 'px').style('top', (event.pageY - 28) + 'px');
+      })
+      .on('mouseout', (event) => {
+        d3.select(event.currentTarget).attr('opacity', 0.85);
+        tooltip.transition().duration(400).style('opacity', 0);
+      });
+
+    svg.append('g')
+      .attr('transform', `translate(0,${height - margin.bottom})`)
+      .call(d3.axisBottom(x).ticks(width / 100).tickSizeOuter(0))
+      .attr('color', 'currentColor');
+
+    // Legend
+    const legend = svg.append('g')
+      .attr('transform', `translate(${width - 120}, ${margin.top})`);
+
+    keys.slice(0, 8).forEach((key, i) => {
+      const lg = legend.append('g').attr('transform', `translate(0, ${i * 18})`);
+      lg.append('rect').attr('width', 12).attr('height', 12).attr('fill', color(key)).attr('rx', 2);
+      lg.append('text').attr('x', 16).attr('y', 10).text(key.length > 14 ? key.substring(0, 12) + '..' : key)
+        .style('font-size', '11px').attr('fill', 'currentColor');
     });
 
-    const xAxis = Array.from(grouped.keys()).sort();
-    const legend = Array.from(categories);
-    const series = legend.map(cat => {
-      return {
-        name: cat,
-        type: 'line',
-        stack: 'Total',
-        smooth: true,
-        lineStyle: { width: 0 },
-        showSymbol: false,
-        areaStyle: {
-          opacity: 0.8
-        },
-        emphasis: {
-          focus: 'series'
-        },
-        data: xAxis.map(date => grouped.get(date).get(cat) || 0)
-      };
-    });
-
-    return { xAxis, series, legend };
-  };
-
-  const streamData = buildStreamData();
-
-  const option = {
-    color: ['#3F72AF', '#112D4E', '#80C4E9', '#96C9F4', '#5A96E3', '#2A4A7F'],
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: {
-        type: 'cross',
-        label: { backgroundColor: '#6a7985' }
-      }
-    },
-    legend: {
-      data: streamData.legend,
-      top: 10
-    },
-    grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '3%',
-      containLabel: true
-    },
-    xAxis: [
-      {
-        type: 'category',
-        boundaryGap: false,
-        data: streamData.xAxis
-      }
-    ],
-    yAxis: [
-      {
-        type: 'value'
-      }
-    ],
-    series: streamData.series
-  };
+    return () => { svg.selectAll('*').remove(); d3.select(tooltipRef.current).style('opacity', 0); };
+  }, [filteredData, isConfigured, config]);
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <PageTitle title="Streamgraph" />
-          <p className="text-gray-500 dark:text-gray-400">View volume distribution over a continuous axis using ECharts.</p>
+          <p className="text-gray-500 dark:text-gray-400">View volume distribution over a continuous axis using D3.js.</p>
         </div>
         {selectedDataset && (
           <Button variant={isEditing ? "primary" : "secondary"} onClick={() => setIsEditing(!isEditing)}>
@@ -184,10 +200,13 @@ const AdvancedChart4Page = () => {
         <EmptyState title="Build Your Advanced Chart" description="Your chart is empty. Click 'Edit Chart' to map your data streams." />
       ) : (
         <>
-          <Card className="w-full min-h-[500px] p-0 relative pt-12">
-            <ReactECharts option={option} style={{ height: '500px', width: '100%' }} />
+          <Card className="w-full min-h-[500px] p-4 relative">
+            <div className="relative w-full h-full">
+              <svg ref={svgRef} className="w-full h-full min-h-[500px] text-gray-700 dark:text-gray-300" />
+              <div ref={tooltipRef} className="dark:text-gray-800" />
+            </div>
           </Card>
-          <InsightAccordion insight="Streamgraphs show volume over time stacked symmetrically, ideal for temporal trends." />
+          <InsightAccordion insight="Streamgraphs show volume over time stacked symmetrically, ideal for temporal trends. Hover layers to identify categories." />
         </>
       )}
     </div>
