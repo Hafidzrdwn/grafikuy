@@ -75,30 +75,37 @@ const AdvancedChart4Page = () => {
       .style('box-shadow', '0 4px 12px rgb(0 0 0 / 0.15)')
       .style('color', '#333');
 
-    const formatDate = (rawVal) => {
-      let d;
+    const parseSafeDate = (rawVal) => {
+      if (!rawVal) return new Date();
+      if (rawVal instanceof Date) return rawVal;
+      
       if (typeof rawVal === 'number' && rawVal > 40000 && rawVal < 50000) {
-        d = new Date((rawVal - 25569) * 86400 * 1000);
-      } else if (rawVal instanceof Date) {
-        d = rawVal;
-      } else {
-        d = new Date(rawVal);
+        return new Date((rawVal - 25569) * 86400 * 1000);
       }
       
-      if (!d || isNaN(d.getTime())) return String(rawVal);
+      const strVal = String(rawVal).replace(' ', 'T');
+      const d = new Date(strVal);
       
+      return isNaN(d.getTime()) ? new Date(0) : d;
+    };
+
+    const getGroupDateKey = (rawVal) => {
+      const d = parseSafeDate(rawVal);
       const fmt = config.dateFormat || 'month-year';
-      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      
       const y = d.getFullYear();
-      const m = d.getMonth();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
       
       switch (fmt) {
-        case 'year': return String(y);
-        case 'month': return months[m];
-        case 'month-year': return `${months[m]} ${y}`;
-        case 'quarter': return `Q${Math.floor(m / 3) + 1} ${y}`;
-        case 'day': return d.toISOString().split('T')[0];
-        default: return d.toISOString().split('T')[0];
+        case 'year': return `${y}-01-01`;
+        case 'month':
+        case 'month-year': return `${y}-${m}-01`;
+        case 'quarter': 
+          const qMonth = String(Math.floor(d.getMonth() / 3) * 3 + 1).padStart(2, '0');
+          return `${y}-${qMonth}-01`;
+        case 'day': 
+        default: return `${y}-${m}-${day}`;
       }
     };
 
@@ -107,7 +114,7 @@ const AdvancedChart4Page = () => {
     const catTotals = new Map();
     
     filteredData.forEach(row => {
-      const dateKey = formatDate(row[config.dateCol]);
+      const dateKey = getGroupDateKey(row[config.dateCol]);
       const catVal = String(row[config.catCol]);
       const val = Number(row[config.valCol]) || 0;
       
@@ -146,7 +153,7 @@ const AdvancedChart4Page = () => {
     const x = d3.scaleTime()
       .domain(d3.extent(dataFormatted, d => d.date))
       .range([margin.left, width - margin.right]);
-
+    
     const y = d3.scaleLinear()
       .domain([d3.min(series, d => d3.min(d, d => d[0])), d3.max(series, d => d3.max(d, d => d[1]))])
       .range([height - margin.bottom, margin.top]);
@@ -160,6 +167,10 @@ const AdvancedChart4Page = () => {
       .x(d => x(d.data.date))
       .y0(d => y(d[0]))
       .y1(d => y(d[1]));
+    
+    console.log(
+      "Area :", area
+    )
 
     svg.selectAll('path.stream')
       .data(series)
