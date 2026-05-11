@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import { Outlet } from 'react-router-dom';
+import PageVisitors from '../ui/PageVisitors';
 
 const Layout = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -31,6 +32,7 @@ const Layout = () => {
       
       <main className={`transition-all duration-300 pt-16 min-h-screen ${isSidebarCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
         <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+          <PageVisitors className='sm:hidden inline-flex mt-2 mb-4' />
           <Outlet />
         </div>
       </main>
