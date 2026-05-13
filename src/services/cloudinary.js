@@ -4,6 +4,20 @@ export const uploadFile = async (file) => {
   const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
   const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 
+  const allowedExtensions = ['csv', 'xls', 'xlsx'];
+  const fileExtension = file.name.split('.').pop().toLowerCase();
+  
+  if (!allowedExtensions.includes(fileExtension)) {
+    throw new Error('Format file ditolak! Hanya menerima CSV atau Excel.');
+  }
+
+  const maxSizeInMB = 3;
+  const maxSizeInBytes = maxSizeInMB * 1024 * 1024;
+  
+  if (file.size > maxSizeInBytes) {
+    throw new Error(`Ukuran file terlalu besar! Maksimal ${maxSizeInMB}MB.`);
+  }
+
   if (!cloudName || !uploadPreset) {
     throw new Error('Cloudinary credentials missing in .env');
   }
