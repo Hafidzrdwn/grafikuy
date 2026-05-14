@@ -12,7 +12,7 @@ import FilterBar from '@/components/dashboard/FilterBar';
 import Button from '@/components/ui/Button';
 import { Settings2 } from 'lucide-react';
 import { updateDatasetConfig } from '@/services/firebase';
-import { applyFilters } from '@/services/aggregationEngine';
+import { applyFilters, formatValue } from '@/services/aggregationEngine';
 
 const AdvancedChart2Page = () => {
   const { selectedDataset, parsedData, schema, loading } = useContext(DataContext);
@@ -173,7 +173,8 @@ const AdvancedChart2Page = () => {
       .on('mouseover', (event, d) => {
         d3.select(event.currentTarget).attr('stroke', '#112D4E').attr('stroke-width', 2);
         const val = resolveCountryValue(d.properties.name);
-        const formattedVal = val !== undefined ? new Intl.NumberFormat().format(Math.round(val)) : 'No data';
+        const ttFmt = config.tooltipFormat || 'raw';
+        const formattedVal = val !== undefined ? formatValue(val, ttFmt) : 'No data';
         tooltip.transition().duration(200).style('opacity', 0.95);
         tooltip.html(
           `<strong>${d.properties.name}</strong><br/>${aggLabel} of ${config.valCol}: ${formattedVal}`
@@ -213,7 +214,8 @@ const AdvancedChart2Page = () => {
         .style('cursor', 'pointer')
         .on('mouseover', (event, d) => {
           d3.select(event.currentTarget).attr('fill-opacity', 1).attr('stroke-width', 2);
-          const formattedVal = new Intl.NumberFormat().format(Math.round(d.value));
+          const ttFmt = config.tooltipFormat || 'raw';
+          const formattedVal = formatValue(d.value, ttFmt);
           tooltip.transition().duration(200).style('opacity', 0.95);
           tooltip.html(`<strong>${d.name}</strong><br/>${aggLabel} of ${config.valCol}: ${formattedVal}`)
             .style('left', (event.clientX + 14) + 'px')

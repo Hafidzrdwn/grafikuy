@@ -12,7 +12,7 @@ export const useDatasets = () => {
         setDatasets(data);
         setLoading(false);
       });
-      return () => unsubscribe();
+      return unsubscribe;
     } catch (err) {
       setError(err);
       setLoading(false);

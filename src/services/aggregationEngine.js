@@ -25,10 +25,52 @@ export const formatDateValue = (rawValue, format) => {
   }
 };
 
+export const formatValue = (value, format) => {
+  if (value == null) return '';
+
+  if (!format || format === 'none' || format === 'auto') {
+    if (value instanceof Date && !isNaN(value.getTime())) {
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      return `${String(value.getDate()).padStart(2,'0')}-${months[value.getMonth()]}-${value.getFullYear()}`;
+    }
+    if (typeof value === 'number') {
+      return new Intl.NumberFormat('id-ID').format(value);
+    }
+    return String(value);
+  }
+
+  if (format === 'raw') return String(value);
+  if (format === 'currency-IDR') {
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(Number(value));
+  }
+  if (format === 'compact') {
+    return new Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 1 }).format(Number(value));
+  }
+  if (format === 'id-number') {
+    return new Intl.NumberFormat('id-ID').format(Number(value));
+  }
+
+  const str = String(value);
+  if (format === 'capitalize') return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+  if (format === 'uppercase') return str.toUpperCase();
+  if (format === 'truncate-10') return str.length > 10 ? str.substring(0, 10) + '…' : str;
+
+  const d = new Date(value);
+  if (!isNaN(d.getTime())) {
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    if (format === 'DD-MMM-YYYY') return `${String(d.getDate()).padStart(2,'0')}-${months[d.getMonth()]}-${d.getFullYear()}`;
+    if (format === 'YYYY') return String(d.getFullYear());
+    if (format === 'MM/YYYY') return `${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+  }
+
+  return str;
+};
+
 export const applyFilters = (data, activeFilters) => {
   if (!activeFilters || Object.keys(activeFilters).length === 0) return data;
 
   const dateRanges = {};
+  const dateExacts = {};
   const regularFilters = {};
   
   for (const [key, value] of Object.entries(activeFilters)) {
@@ -41,6 +83,12 @@ export const applyFilters = (data, activeFilters) => {
       const col = key.replace('__to', '');
       if (!dateRanges[col]) dateRanges[col] = {};
       dateRanges[col].to = new Date(value);
+    } else if (key.endsWith('__exact')) {
+      const col = key.replace('__exact', '');
+      const mode = activeFilters[`${col}__mode`] || 'year';
+      dateExacts[col] = { value: Number(value), mode };
+    } else if (key.endsWith('__mode')) {
+      continue;
     } else {
       regularFilters[key] = value;
     }
@@ -62,44 +110,49 @@ export const applyFilters = (data, activeFilters) => {
       if (range.to && cellDate > new Date(range.to.getTime() + 86400000)) return false; 
     }
     
+    for (const [column, exact] of Object.entries(dateExacts)) {
+      const cellDate = new Date(row[column]);
+      if (isNaN(cellDate.getTime())) return false;
+      if (exact.mode === 'year' && cellDate.getFullYear() !== exact.value) return false;
+      if (exact.mode === 'month' && (cellDate.getMonth() + 1) !== exact.value) return false;
+      if (exact.mode === 'quarter' && (Math.floor(cellDate.getMonth() / 3) + 1) !== exact.value) return false;
+    }
+    
     return true;
   });
 };
 
-export const aggregateData = (data, groupByCol, measureCol, aggType = 'sum') => {
+export const aggregateData = (data, groupByCol, measureCol, aggType = 'sum', chartType = null) => {
   if (!data || data.length === 0) return groupByCol ? [] : 0;
+  if (!groupByCol) return computeAgg(data, measureCol, aggType);
 
-  if (!groupByCol) {
-    return computeAgg(data, measureCol, aggType);
-  }
-
-  const grouped = {};
-  
-  for (let i = 0; i < data.length; i++) {
-    const row = data[i];
-    const groupKey = row[groupByCol];
+  const grouped = data.reduce((acc, row) => {
+    const key = row[groupByCol];
     
-    if (groupKey === null || groupKey === undefined || groupKey === '') continue;
-
-    if (!grouped[groupKey]) {
-      grouped[groupKey] = [];
+    if (key != null && key !== '') {
+      acc[key] = acc[key] || [];
+      acc[key].push(row);
     }
-    grouped[groupKey].push(row);
-  }
+    return acc;
+  }, {});
 
-  const result = [];
-  for (const [key, groupRows] of Object.entries(grouped)) {
-    const val = computeAgg(groupRows, measureCol, aggType);
-    result.push({
-      [groupByCol]: key,
-      [measureCol]: val
-    });
-  }
+  const result = Object.entries(grouped).map(([key, groupRows]) => ({
+    [groupByCol]: key,
+    [measureCol]: computeAgg(groupRows, measureCol, aggType)
+  }));
 
-  if (aggType !== 'count') {
-    result.sort((a, b) => b[measureCol] - a[measureCol]);
+  const shouldSortDesc = {
+    'horizontalbarchart': true,
+    'verticalbarchart': false,
+    'linechart': false,
+    'piechart': false,
+    'scatterchart': false,
   }
-
+  
+  if (chartType && shouldSortDesc[chartType.toLowerCase()]) {
+    return result.sort((a, b) => b[measureCol] - a[measureCol]);
+  }
+  
   return result;
 };
 

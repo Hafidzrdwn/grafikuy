@@ -209,6 +209,32 @@ const AdvancedBuilderPanel = ({ config, onSave, columns, onClose, chartType }) =
             </div>
           </div>
         )}
+
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border dark:border-[#3F72AF]/30">
+          <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 block mb-3 uppercase tracking-wider">Formatting</label>
+          <div className="md:w-1/2">
+            <label className="text-xs text-gray-500 block mb-1">
+              {isStream ? 'Tooltip Label Format' : 'Tooltip Value Format'}
+            </label>
+            <select className="w-full p-2 border rounded text-sm dark:bg-gray-700 dark:text-white" value={draftConfig.tooltipFormat || 'none'} onChange={(e) => setDraftConfig({ ...draftConfig, tooltipFormat: e.target.value })}>
+              <option value="none">Default (auto)</option>
+              {isStream ? (
+                <optgroup label="String (Category)">
+                  <option value="capitalize">Capitalize</option>
+                  <option value="uppercase">UPPERCASE</option>
+                  <option value="truncate-10">Truncate (10 chars)</option>
+                </optgroup>
+              ) : (
+                <optgroup label="Number (Value)">
+                  <option value="raw">Raw Number</option>
+                  <option value="id-number">Indonesian (1.234.567)</option>
+                  <option value="currency-IDR">Currency IDR (Rp)</option>
+                  <option value="compact">Compact (1K, 1M)</option>
+                </optgroup>
+              )}
+            </select>
+          </div>
+        </div>
       </div>
     </Card>
   );

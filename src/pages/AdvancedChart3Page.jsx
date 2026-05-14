@@ -11,7 +11,7 @@ import FilterBar from '@/components/dashboard/FilterBar';
 import Button from '@/components/ui/Button';
 import { Settings2 } from 'lucide-react';
 import { updateDatasetConfig } from '@/services/firebase';
-import { flatToGraph, applyFilters } from '@/services/aggregationEngine';
+import { flatToGraph, applyFilters, formatValue } from '@/services/aggregationEngine';
 
 const AdvancedChart3Page = () => {
   const { selectedDataset, parsedData, schema, loading } = useContext(DataContext);
@@ -124,7 +124,8 @@ const AdvancedChart3Page = () => {
         .on('end', e => { if (!e.active) simulation.alphaTarget(0); e.subject.fx = null; e.subject.fy = null; }))
       .on('mouseover', (event, d) => {
         d3.select(event.currentTarget).attr('r', Math.max(6, d.symbolSize / 2));
-        const val = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(d.value);
+        const ttFmt = config.tooltipFormat || 'compact';
+        const val = formatValue(d.value, ttFmt);
         tooltip.transition().duration(200).style('opacity', 0.95);
         tooltip.html(`<strong>${d.name}</strong><br/>Level: ${d.category}<br/>Weight: ${val}`)
           .style('left', (event.clientX + 14) + 'px')

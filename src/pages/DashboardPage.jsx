@@ -15,7 +15,7 @@ import InsightAccordion from '@/components/dashboard/InsightAccordion';
 import DashboardBuilderPanel from '@/components/dashboard/DashboardBuilderPanel';
 import Button from '@/components/ui/Button';
 import { Settings2 } from 'lucide-react';
-import { applyFilters, aggregateData, formatDateValue } from '@/services/aggregationEngine';
+import { applyFilters, aggregateData, formatDateValue, formatValue } from '@/services/aggregationEngine';
 import { updateDatasetConfig } from '@/services/firebase';
 
 const DashboardPage = () => {
@@ -62,7 +62,7 @@ const DashboardPage = () => {
       if (kpi.format === 'raw') {
         formattedValue = Number(value).toFixed(kpi.decimals ?? 0);
       } else {
-        formattedValue = new Intl.NumberFormat('en-US', {
+        formattedValue = new Intl.NumberFormat('id-ID', {
           minimumFractionDigits: kpi.decimals ?? 0,
           maximumFractionDigits: kpi.decimals ?? 0,
         }).format(value);
@@ -81,32 +81,39 @@ const DashboardPage = () => {
 
   const renderChart = (chartConfig) => {
     let chartData = [];
+    let chartType = chartConfig.type;
     const dim = chartConfig.dimension || chartConfig.xAxis || chartConfig.category;
     const meas = chartConfig.measure || chartConfig.yAxis || chartConfig.value;
     const agg = chartConfig.aggType || 'sum';
     const dateFormat = chartConfig.dateFormat;
 
-    if (chartConfig.type === 'BarChart' || chartConfig.type === 'LineChart') {
-      let aggResults = aggregateData(filteredData, dim, meas, agg);
+    if (chartType === 'BarChart' || chartType === 'LineChart') {
+      let chartTypeConfig = null;
+      if (chartType === 'BarChart') {
+        chartTypeConfig = chartConfig.orientation === 'horizontal' ? 'HorizontalBarChart' : 'VerticalBarChart';
+      } else {
+        chartTypeConfig = 'LineChart';
+      }
+      let aggResults = aggregateData(filteredData, dim, meas, agg, chartTypeConfig);
       if (dateFormat && dateFormat !== 'auto') {
         const formatted = filteredData.map(r => ({ ...r, [`__fmt_${dim}`]: formatDateValue(r[dim], dateFormat) }));
         const fmtDim = `__fmt_${dim}`;
-        aggResults = aggregateData(formatted, fmtDim, meas, agg);
+        aggResults = aggregateData(formatted, fmtDim, meas, agg, chartTypeConfig);
         chartData = aggResults.map(r => ({ label: String(r[fmtDim]), value: r[meas] }));
       } else {
         chartData = aggResults.map(r => ({ label: String(r[dim]), value: r[meas] }));
       }
-    } else if (chartConfig.type === 'PieChart') {
-      let aggResults = aggregateData(filteredData, dim, meas, agg);
+    } else if (chartType === 'PieChart') {
+      let aggResults = aggregateData(filteredData, dim, meas, agg, chartType);
       if (dateFormat && dateFormat !== 'auto') {
         const formatted = filteredData.map(r => ({ ...r, [`__fmt_${dim}`]: formatDateValue(r[dim], dateFormat) }));
         const fmtDim = `__fmt_${dim}`;
-        aggResults = aggregateData(formatted, fmtDim, meas, agg);
+        aggResults = aggregateData(formatted, fmtDim, meas, agg, chartType);
         chartData = aggResults.map(r => ({ id: String(r[fmtDim]), label: String(r[fmtDim]), value: r[meas] }));
       } else {
         chartData = aggResults.map(r => ({ id: String(r[dim]), label: String(r[dim]), value: r[meas] }));
       }
-    } else if (chartConfig.type === 'ScatterChart') {
+    } else if (chartType === 'ScatterChart') {
       const detailDim = chartConfig.detailDim;
       if (detailDim) {
         const grouped = {};
@@ -136,16 +143,40 @@ const DashboardPage = () => {
       }
     }
 
-    const ChartComp = { 'BarChart': BarChart, 'LineChart': LineChart, 'PieChart': PieChart, 'ScatterChart': ScatterChart }[chartConfig.type];
+    const sortBy = chartConfig.sortBy || 'none';
+    const sortOrder = chartConfig.sortOrder || 'none';
+    if (sortOrder !== 'none' && chartType !== 'ScatterChart') {
+      chartData.sort((a, b) => {
+        let valA, valB;
+        if (sortBy === 'measure') {
+          valA = Number(a.value ?? a.y ?? 0);
+          valB = Number(b.value ?? b.y ?? 0);
+        } else {
+          valA = String(a.label ?? a.id ?? '');
+          valB = String(b.label ?? b.id ?? '');
+          return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        }
+        return sortOrder === 'asc' ? valA - valB : valB - valA;
+      });
+    }
+
+    const ChartComp = { 'BarChart': BarChart, 'LineChart': LineChart, 'PieChart': PieChart, 'ScatterChart': ScatterChart }[chartType];
     if (!ChartComp) return null;
 
     const title = chartConfig.title || `${meas} by ${dim}`;
+    const formatConfig = {
+      xAxisFormat: chartConfig.xAxisFormat || 'none',
+      yAxisFormat: chartConfig.yAxisFormat || 'none',
+      tooltipFormat: chartConfig.tooltipFormat || 'none',
+    };
 
     return (
-      <Card key={chartConfig.id || chartConfig.type + dim} className="flex flex-col h-full relative overflow-hidden">
+      <Card key={chartConfig.id || chartType + dim} className="flex flex-col h-full relative overflow-hidden">
         <h3 className="font-semibold text-lg text-(--color-dark) dark:text-white mb-4">{title}</h3>
-        <div className="flex-1 relative"><ChartComp data={chartData} orientation={chartConfig.orientation} /></div>
-        <InsightAccordion insight={`Displaying ${chartConfig.type === 'ScatterChart' ? 'distribution of' : 'aggregated values for'} ${meas} by ${dim}.`} />
+        <div className="flex-1 relative">
+          <ChartComp data={chartData} orientation={chartConfig.orientation} formatConfig={formatConfig} />
+        </div>
+        <InsightAccordion insight={`Displaying ${chartType === 'ScatterChart' ? 'distribution of' : 'aggregated values for'} ${meas} by ${dim}.`} />
       </Card>
     );
   };

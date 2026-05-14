@@ -1,7 +1,8 @@
 import { useRef, useEffect } from 'react';
 import * as d3 from 'd3';
+import { formatValue } from '@/services/aggregationEngine';
 
-const PieChart = ({ data }) => {
+const PieChart = ({ data, formatConfig = {} }) => {
   const svgRef = useRef();
   const tooltipRef = useRef();
 
@@ -71,7 +72,8 @@ const PieChart = ({ data }) => {
       .style('stroke-width', '2px')
       .on('mouseover', (event, d) => {
         d3.select(event.currentTarget).style('opacity', 0.75);
-        const formatted = new Intl.NumberFormat().format(d.data.value);
+        const { tooltipFormat = 'none' } = formatConfig;
+        const formatted = tooltipFormat !== 'none' ? formatValue(d.data.value, tooltipFormat) : new Intl.NumberFormat('id-ID').format(d.data.value);
         const percent = ((d.data.value / total) * 100).toFixed(1);
         tooltip.transition().duration(200).style('opacity', .95);
         tooltip.html(`<strong>${d.data.label}</strong><br/>Value: ${formatted}<br/>Share: ${percent}%`)

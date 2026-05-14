@@ -49,7 +49,7 @@ export const useSelectedData = (datasets) => {
       }
     });
 
-    return () => unsubscribe();
+    return unsubscribe;
   }, [datasets]);
 
   return { selectedDataset, parsedData, schema, loading, error };

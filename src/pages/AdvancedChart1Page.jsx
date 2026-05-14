@@ -11,7 +11,7 @@ import FilterBar from '@/components/dashboard/FilterBar';
 import Button from '@/components/ui/Button';
 import { Settings2 } from 'lucide-react';
 import { updateDatasetConfig } from '@/services/firebase';
-import { flatToGraph, applyFilters } from '@/services/aggregationEngine';
+import { flatToGraph, applyFilters, formatValue } from '@/services/aggregationEngine';
 
 const AdvancedChart1Page = () => {
   const { selectedDataset, parsedData, schema, loading } = useContext(DataContext);
@@ -155,7 +155,8 @@ const AdvancedChart1Page = () => {
       .style('cursor', 'pointer')
       .on('mouseover', (event, d) => {
         d3.select(event.currentTarget).attr('r', 8).attr('fill', '#5A96E3');
-        const val = d.data.value ? new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(d.data.value) : '';
+        const ttFmt = config.tooltipFormat || 'compact';
+        const val = d.data.value ? formatValue(d.data.value, ttFmt) : '';
         tooltip.transition().duration(200).style('opacity', 0.95);
         tooltip.html(`<strong>${d.data.name}</strong>${val ? '<br/>Value: ' + val : ''}`)
           .style('left', (event.clientX + 14) + 'px')
@@ -175,7 +176,8 @@ const AdvancedChart1Page = () => {
       .attr('text-anchor', d => d.x < Math.PI === !d.children ? 'start' : 'end')
       .attr('transform', d => d.x >= Math.PI ? 'rotate(180)' : null)
       .text(d => {
-        const val = d.data.value ? new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(d.data.value) : '';
+        const ttFmt2 = config.tooltipFormat || 'compact';
+        const val = d.data.value ? formatValue(d.data.value, ttFmt2) : '';
         return val ? `${d.data.name} ${val}` : d.data.name;
       })
       .attr('fill', '#112D4E')

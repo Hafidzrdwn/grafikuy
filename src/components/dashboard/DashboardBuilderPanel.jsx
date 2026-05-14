@@ -165,7 +165,7 @@ const DashboardBuilderPanel = ({ config, onSave, columns, schema, onClose }) => 
                       <div className="md:flex-1">
                         <label className="text-xs text-gray-500 block mb-1">Number Format</label>
                         <select className="w-full p-1.5 border rounded text-xs dark:bg-gray-700 dark:text-white" value={kpi.format || 'commas'} onChange={(e) => updateItem('kpiCards', i, 'format', e.target.value)}>
-                          <option value="commas">Commas (1,000)</option>
+                          <option value="commas">Commas (1.000)</option>
                           <option value="raw">Raw (1000)</option>
                         </select>
                       </div>
@@ -173,8 +173,8 @@ const DashboardBuilderPanel = ({ config, onSave, columns, schema, onClose }) => 
                         <label className="text-xs text-gray-500 block mb-1">Decimals</label>
                         <select className="w-full p-1.5 border rounded text-xs dark:bg-gray-700 dark:text-white" value={kpi.decimals ?? 0} onChange={(e) => updateItem('kpiCards', i, 'decimals', Number(e.target.value))}>
                           <option value={0}>0 (Whole Number)</option>
-                          <option value={1}>1 (e.g. 10.5)</option>
-                          <option value={2}>2 (e.g. 10.50)</option>
+                          <option value={1}>1 (e.g. 10,5)</option>
+                          <option value={2}>2 (e.g. 10,50)</option>
                         </select>
                       </div>
                     </div>
@@ -278,6 +278,88 @@ const DashboardBuilderPanel = ({ config, onSave, columns, schema, onClose }) => 
                         </div>
                       </>
                     )}
+                  </div>
+                  {/* --- Sorting & Formatting --- */}
+                  <div className="flex flex-wrap gap-4 p-2 bg-blue-50/50 dark:bg-blue-900/10 rounded border border-dashed border-blue-200 dark:border-blue-800/30 mt-2">
+                    <div className="md:flex-1">
+                      <label className="text-xs text-gray-500 block mb-1">Sort By</label>
+                      <select className="w-full p-1.5 border rounded text-sm dark:bg-gray-700 dark:text-white" value={chart.sortBy || 'none'} onChange={(e) => updateItem('charts', i, 'sortBy', e.target.value)}>
+                        <option value="none">None</option>
+                        <option value="dimension">Dimension (Label)</option>
+                        <option value="measure">Measure (Value)</option>
+                      </select>
+                    </div>
+                    <div className="md:flex-1">
+                      <label className="text-xs text-gray-500 block mb-1">Sort Order</label>
+                      <select className="w-full p-1.5 border rounded text-sm dark:bg-gray-700 dark:text-white" value={chart.sortOrder || 'none'} onChange={(e) => updateItem('charts', i, 'sortOrder', e.target.value)}>
+                        <option value="none">Default</option>
+                        <option value="asc">Ascending ↑</option>
+                        <option value="desc">Descending ↓</option>
+                      </select>
+                    </div>
+                    <div className="md:flex-1">
+                      <label className="text-xs text-gray-500 block mb-1">
+                        {chart.type === 'ScatterChart' ? 'X-Axis Number Format' : 'Label Format'}
+                      </label>
+                      <select className="w-full p-1.5 border rounded text-sm dark:bg-gray-700 dark:text-white" value={chart.xAxisFormat || 'none'} onChange={(e) => updateItem('charts', i, 'xAxisFormat', e.target.value)}>
+                        <option value="none">Default</option>
+                        {chart.type === 'ScatterChart' ? (
+                          <optgroup label="Number">
+                            <option value="raw">Raw Number</option>
+                            <option value="id-number">Indonesian (1.234)</option>
+                            <option value="currency-IDR">Currency IDR (Rp)</option>
+                            <option value="compact">Compact (1K, 1M)</option>
+                          </optgroup>
+                        ) : getColumnType(chart.dimension) === 'date' ? (
+                          <optgroup label="Date">
+                            <option value="DD-MMM-YYYY">DD-MMM-YYYY</option>
+                            <option value="YYYY">YYYY</option>
+                            <option value="MM/YYYY">MM/YYYY</option>
+                          </optgroup>
+                        ) : (
+                          <optgroup label="String">
+                            <option value="capitalize">Capitalize</option>
+                            <option value="uppercase">UPPERCASE</option>
+                            <option value="truncate-10">Truncate (10 chars)</option>
+                          </optgroup>
+                        )}
+                      </select>
+                    </div>
+                    <div className="md:flex-1">
+                      <label className="text-xs text-gray-500 block mb-1">
+                        {chart.type === 'ScatterChart' ? 'Y-Axis Number Format' : 'Value Format'}
+                      </label>
+                      <select className="w-full p-1.5 border rounded text-sm dark:bg-gray-700 dark:text-white" value={chart.yAxisFormat || 'none'} onChange={(e) => updateItem('charts', i, 'yAxisFormat', e.target.value)}>
+                        <option value="none">Default</option>
+                        <optgroup label="Number">
+                          <option value="raw">Raw Number</option>
+                          <option value="id-number">Indonesian (1.234)</option>
+                          <option value="currency-IDR">Currency IDR (Rp)</option>
+                          <option value="compact">Compact (1K, 1M)</option>
+                        </optgroup>
+                      </select>
+                    </div>
+                    <div className="md:flex-1">
+                      <label className="text-xs text-gray-500 block mb-1">
+                        {chart.type === 'ScatterChart' ? 'Details Tooltip Format' : 'Tooltip Value Format'}
+                      </label>
+                      <select className="w-full p-1.5 border rounded text-sm dark:bg-gray-700 dark:text-white" value={chart.tooltipFormat || 'none'} onChange={(e) => updateItem('charts', i, 'tooltipFormat', e.target.value)}>
+                        <option value="none">Default (auto)</option>
+                        {chart.type === 'ScatterChart' ? (
+                          <optgroup label="Details (String)">
+                            <option value="capitalize">Capitalize</option>
+                            <option value="uppercase">UPPERCASE</option>
+                          </optgroup>
+                        ) : (
+                          <optgroup label="Number (Value)">
+                            <option value="raw">Raw Number</option>
+                            <option value="id-number">Indonesian (1.234.567)</option>
+                            <option value="currency-IDR">Currency IDR (Rp)</option>
+                            <option value="compact">Compact (1K, 1M)</option>
+                          </optgroup>
+                        )}
+                      </select>
+                    </div>
                   </div>
                 </div>
                 <button onClick={() => removeItem('charts', i)} className="p-2 text-red-500 hover:bg-red-50 rounded mt-6"><Trash2 className="w-4 h-4" /></button>

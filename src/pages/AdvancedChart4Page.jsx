@@ -11,7 +11,7 @@ import FilterBar from '@/components/dashboard/FilterBar';
 import Button from '@/components/ui/Button';
 import { Settings2 } from 'lucide-react';
 import { updateDatasetConfig } from '@/services/firebase';
-import { applyFilters } from '@/services/aggregationEngine';
+import { applyFilters, formatValue } from '@/services/aggregationEngine';
 
 const AdvancedChart4Page = () => {
   const { selectedDataset, parsedData, schema, loading } = useContext(DataContext);
@@ -168,10 +168,6 @@ const AdvancedChart4Page = () => {
       .y0(d => y(d[0]))
       .y1(d => y(d[1]));
     
-    console.log(
-      "Area :", area
-    )
-
     svg.selectAll('path.stream')
       .data(series)
       .join('path')
@@ -182,7 +178,9 @@ const AdvancedChart4Page = () => {
       .on('mouseover', (event, d) => {
         d3.select(event.currentTarget).attr('opacity', 1);
         tooltip.transition().duration(200).style('opacity', 0.95);
-        tooltip.html(`<strong>${d.key}</strong>`)
+        const ttFmt = config.tooltipFormat || 'none';
+        const formattedKey = ttFmt !== 'none' ? formatValue(d.key, ttFmt) : d.key;
+        tooltip.html(`<strong>${formattedKey}</strong>`)
           .style('left', (event.clientX + 14) + 'px')
           .style('top', (event.clientY - 30) + 'px');
       })
