@@ -184,12 +184,28 @@ const AdvancedChart4Page = () => {
         tooltip.transition().duration(200).style('opacity', 0.95);
         const ttFmt = config.tooltipFormat || 'none';
         const formattedKey = ttFmt !== 'none' ? formatValue(d.key, ttFmt) : d.key;
-        tooltip.html(`<strong>${formattedKey}</strong>`)
-          .style('left', (event.clientX + 14) + 'px')
-          .style('top', (event.clientY - 30) + 'px');
+        tooltip.html(`<strong>${formattedKey}</strong>`);
+
+        setTimeout(() => {
+            const tooltipWidth = tooltip.node().offsetWidth;
+            const xPosition =
+              event.clientX + 14 + tooltipWidth > window.innerWidth
+                ? event.clientX - tooltipWidth - 14
+                : event.clientX + 14;
+            tooltip
+              .style("left", xPosition + "px")
+              .style("top", event.clientY - 30 + "px");
+          }, 0);
       })
       .on('mousemove', (event) => {
-        tooltip.style('left', (event.clientX + 14) + 'px').style('top', (event.clientY - 30) + 'px');
+        const tooltipWidth = tooltip.node().offsetWidth;
+          const xPosition =
+            event.clientX + 14 + tooltipWidth > window.innerWidth
+              ? event.clientX - tooltipWidth - 14
+              : event.clientX + 14;
+          tooltip
+            .style("left", xPosition + "px")
+            .style("top", event.clientY - 30 + "px");
       })
       .on('mouseout', (event) => {
         d3.select(event.currentTarget).attr('opacity', 0.85);

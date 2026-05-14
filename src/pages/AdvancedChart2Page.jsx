@@ -1,23 +1,24 @@
-import { useContext, useEffect, useState, useRef } from 'react';
-import { DataContext } from '@/context/DataContext';
-import { AuthContext } from '@/context/AuthContext';
-import { ToastContext } from '@/components/ui/Toast';
-import * as d3 from 'd3';
-import * as topojson from 'topojson-client';
-import PageTitle from '@/components/ui/PageTitle';
-import Card from '@/components/ui/Card';
-import InsightAccordion from '@/components/dashboard/InsightAccordion';
-import EmptyState from '@/components/ui/EmptyState';
-import Spinner from '@/components/ui/Spinner';
-import AdvancedBuilderPanel from '@/components/dashboard/AdvancedBuilderPanel';
-import FilterBar from '@/components/dashboard/FilterBar';
-import Button from '@/components/ui/Button';
-import { Settings2 } from 'lucide-react';
-import { updateDatasetConfig } from '@/services/firebase';
-import { applyFilters, formatValue } from '@/services/aggregationEngine';
+import { useContext, useEffect, useState, useRef } from "react";
+import { DataContext } from "@/context/DataContext";
+import { AuthContext } from "@/context/AuthContext";
+import { ToastContext } from "@/components/ui/Toast";
+import * as d3 from "d3";
+import * as topojson from "topojson-client";
+import PageTitle from "@/components/ui/PageTitle";
+import Card from "@/components/ui/Card";
+import InsightAccordion from "@/components/dashboard/InsightAccordion";
+import EmptyState from "@/components/ui/EmptyState";
+import Spinner from "@/components/ui/Spinner";
+import AdvancedBuilderPanel from "@/components/dashboard/AdvancedBuilderPanel";
+import FilterBar from "@/components/dashboard/FilterBar";
+import Button from "@/components/ui/Button";
+import { Settings2 } from "lucide-react";
+import { updateDatasetConfig } from "@/services/firebase";
+import { applyFilters, formatValue } from "@/services/aggregationEngine";
 
 const AdvancedChart2Page = () => {
-  const { selectedDataset, parsedData, schema, loading } = useContext(DataContext);
+  const { selectedDataset, parsedData, schema, loading } =
+    useContext(DataContext);
   const { isAdmin } = useContext(AuthContext);
   const { addToast } = useContext(ToastContext);
   const [isEditing, setIsEditing] = useState(false);
@@ -28,8 +29,8 @@ const AdvancedChart2Page = () => {
   const tooltipRef = useRef();
 
   useEffect(() => {
-    fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
-      .then(res => res.json())
+    fetch("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json")
+      .then((res) => res.json())
       .then(setGeoData)
       .catch(console.error);
   }, []);
@@ -44,21 +45,26 @@ const AdvancedChart2Page = () => {
     setConfig(newConfig);
     if (selectedDataset?.id) {
       try {
-        await updateDatasetConfig(selectedDataset.id, newConfig, 'advancedChart2Config');
+        await updateDatasetConfig(
+          selectedDataset.id,
+          newConfig,
+          "advancedChart2Config",
+        );
       } catch (e) {
         console.error("Failed to save config", e);
       }
     }
   };
 
-  const handleFilterChange = (key, value) => setFilters(prev => ({ ...prev, [key]: value }));
+  const handleFilterChange = (key, value) =>
+    setFilters((prev) => ({ ...prev, [key]: value }));
 
   const isConfigured = config && config.geoCol && config.valCol;
 
   const isCompatible = () => {
     if (!schema) return false;
     if (!isConfigured) return true;
-    const colNames = schema.columns.map(c => c.name);
+    const colNames = schema.columns.map((c) => c.name);
     return colNames.includes(config.geoCol) && colNames.includes(config.valCol);
   };
 
@@ -67,44 +73,47 @@ const AdvancedChart2Page = () => {
   useEffect(() => {
     if (!isConfigured || !filteredData || !geoData || !svgRef.current) return;
 
-    const width = 975, height = 610;
-    const svg = d3.select(svgRef.current)
-      .attr('viewBox', [0, 0, width, height])
-      .style('width', '100%')
-      .style('height', 'auto');
-    svg.selectAll('*').remove();
+    const width = 975,
+      height = 610;
+    const svg = d3
+      .select(svgRef.current)
+      .attr("viewBox", [0, 0, width, height])
+      .style("width", "100%")
+      .style("height", "auto");
+    svg.selectAll("*").remove();
 
-    const tooltip = d3.select(tooltipRef.current)
-      .style('opacity', 0)
-      .style('position', 'fixed')
-      .style('z-index', '9999')
-      .style('background', 'white')
-      .style('border', '1px solid #ccc')
-      .style('border-radius', '6px')
-      .style('padding', '10px 14px')
-      .style('pointer-events', 'none')
-      .style('font-size', '12px')
-      .style('box-shadow', '0 4px 12px rgb(0 0 0 / 0.15)')
-      .style('color', '#333');
+    const tooltip = d3
+      .select(tooltipRef.current)
+      .style("opacity", 0)
+      .style("position", "fixed")
+      .style("z-index", "9999")
+      .style("background", "white")
+      .style("border", "1px solid #ccc")
+      .style("border-radius", "6px")
+      .style("padding", "10px 14px")
+      .style("pointer-events", "none")
+      .style("font-size", "12px")
+      .style("box-shadow", "0 4px 12px rgb(0 0 0 / 0.15)")
+      .style("color", "#333");
 
     const countryAliases = {
-      'United States': 'United States of America',
-      'USA': 'United States of America',
-      'US': 'United States of America',
-      'UK': 'United Kingdom',
-      'South Korea': 'Korea',
-      'North Korea': "Dem. Rep. Korea",
-      'Russia': 'Russia',
-      'Czech Republic': 'Czechia',
-      'DR Congo': 'Dem. Rep. Congo',
-      'Congo': 'Congo',
-      'Ivory Coast': "Côte d'Ivoire",
-      'Tanzania': 'Tanzania',
-      'Burma': 'Myanmar',
+      "United States": "United States of America",
+      USA: "United States of America",
+      US: "United States of America",
+      UK: "United Kingdom",
+      "South Korea": "Korea",
+      "North Korea": "Dem. Rep. Korea",
+      Russia: "Russia",
+      "Czech Republic": "Czechia",
+      "DR Congo": "Dem. Rep. Congo",
+      Congo: "Congo",
+      "Ivory Coast": "Côte d'Ivoire",
+      Tanzania: "Tanzania",
+      Burma: "Myanmar",
     };
 
     const dataMap = new Map();
-    filteredData.forEach(d => {
+    filteredData.forEach((d) => {
       const loc = String(d[config.geoCol]).trim();
       const val = Number(d[config.valCol]) || 0;
       if (!dataMap.has(loc)) dataMap.set(loc, { sum: 0, count: 0 });
@@ -115,30 +124,46 @@ const AdvancedChart2Page = () => {
 
     const aggMap = new Map();
     for (const [name, stats] of dataMap.entries()) {
-      const agg = config.aggType || 'sum';
+      const agg = config.aggType || "sum";
       let finalVal = stats.sum;
-      if (agg === 'avg') finalVal = stats.sum / stats.count;
-      else if (agg === 'count') finalVal = stats.count;
+      if (agg === "avg") finalVal = stats.sum / stats.count;
+      else if (agg === "count") finalVal = stats.count;
       aggMap.set(name, finalVal);
     }
 
     const maxVal = d3.max(Array.from(aggMap.values())) || 1;
-    const colorScale = d3.scaleSequential(d3.interpolateBlues).domain([0, maxVal]);
+    const colorScale = d3
+      .scaleSequential(d3.interpolateBlues)
+      .domain([0, maxVal]);
     const countries = topojson.feature(geoData, geoData.objects.countries);
-    const projection = d3.geoNaturalEarth1().fitSize([width, height], countries);
+    const projection = d3
+      .geoNaturalEarth1()
+      .fitSize([width, height], countries);
     const path = d3.geoPath(projection);
 
-    const g = svg.append('g');
-    svg.call(d3.zoom().scaleExtent([1, 8]).on('zoom', e => g.attr('transform', e.transform)));
+    const g = svg.append("g");
+    svg.call(
+      d3
+        .zoom()
+        .scaleExtent([1, 8])
+        .on("zoom", (e) => g.attr("transform", e.transform)),
+    );
 
-    const aggLabel = config.aggType === 'avg' ? 'Average' : config.aggType === 'count' ? 'Count' : 'Total';
+    const aggLabel =
+      config.aggType === "avg"
+        ? "Average"
+        : config.aggType === "count"
+          ? "Count"
+          : "Total";
 
     const resolveCountryValue = (geoName) => {
       if (aggMap.has(geoName)) return aggMap.get(geoName);
       for (const [dataName, geoAlias] of Object.entries(countryAliases)) {
-        if (geoAlias === geoName && aggMap.has(dataName)) return aggMap.get(dataName);
+        if (geoAlias === geoName && aggMap.has(dataName))
+          return aggMap.get(dataName);
       }
-      if (countryAliases[geoName] && aggMap.has(countryAliases[geoName])) return aggMap.get(countryAliases[geoName]);
+      if (countryAliases[geoName] && aggMap.has(countryAliases[geoName]))
+        return aggMap.get(countryAliases[geoName]);
       return undefined;
     };
 
@@ -146,108 +171,166 @@ const AdvancedChart2Page = () => {
     for (const [name] of aggMap.entries()) {
       let matched = false;
       for (const feat of countries.features) {
-        if (feat.properties.name === name) { matched = true; break; }
+        if (feat.properties.name === name) {
+          matched = true;
+          break;
+        }
       }
       if (!matched) {
         if (countryAliases[name]) matched = true;
       }
       if (!matched) {
         for (const [, geoAlias] of Object.entries(countryAliases)) {
-          if (geoAlias === name) { matched = true; break; }
+          if (geoAlias === name) {
+            matched = true;
+            break;
+          }
         }
       }
       if (matched) matchCount++;
     }
 
     const totalEntries = aggMap.size;
-    const isChoropleth = totalEntries === 0 || (matchCount / totalEntries) > 0.3;
+    const isChoropleth = totalEntries === 0 || matchCount / totalEntries > 0.3;
 
-    g.selectAll('path')
+    g.selectAll("path")
       .data(countries.features)
-      .join('path')
-      .attr('fill', d => {
-        if (!isChoropleth) return '#e2e8f0';
+      .join("path")
+      .attr("fill", (d) => {
+        if (!isChoropleth) return "#e2e8f0";
         const val = resolveCountryValue(d.properties.name);
-        return val !== undefined ? colorScale(val) : '#e2e8f0';
+        return val !== undefined ? colorScale(val) : "#e2e8f0";
       })
-      .attr('d', path)
-      .attr('stroke', 'white')
-      .attr('stroke-width', 0.5)
-      .style('cursor', 'pointer')
-      .on('mouseover', (event, d) => {
-        d3.select(event.currentTarget).attr('stroke', '#112D4E').attr('stroke-width', 2);
+      .attr("d", path)
+      .attr("stroke", "white")
+      .attr("stroke-width", 0.5)
+      .style("cursor", "pointer")
+      .on("mouseover", (event, d) => {
+        d3.select(event.currentTarget)
+          .attr("stroke", "#112D4E")
+          .attr("stroke-width", 2);
         const val = resolveCountryValue(d.properties.name);
-        const ttFmt = config.tooltipFormat || 'raw';
-        const formattedVal = val !== undefined ? formatValue(val, ttFmt) : 'No data';
-        tooltip.transition().duration(200).style('opacity', 0.95);
+        const ttFmt = config.tooltipFormat || "raw";
+        const formattedVal =
+          val !== undefined ? formatValue(val, ttFmt) : "No data";
+        tooltip.transition().duration(200).style("opacity", 0.95);
         tooltip.html(
-          `<strong>${d.properties.name}</strong><br/>${aggLabel} of ${config.valCol}: ${formattedVal}`
-        )
-          .style('left', (event.clientX + 14) + 'px')
-          .style('top', (event.clientY - 30) + 'px');
+          `<strong>${d.properties.name}</strong><br/>${aggLabel} of ${config.valCol}: ${formattedVal}`,
+        );
+
+        setTimeout(() => {
+          const tooltipWidth = tooltip.node().offsetWidth;
+          const xPosition =
+            event.clientX + 14 + tooltipWidth > window.innerWidth
+              ? event.clientX - tooltipWidth - 14
+              : event.clientX + 14;
+          tooltip
+            .style("left", xPosition + "px")
+            .style("top", event.clientY - 30 + "px");
+        }, 0);
       })
-      .on('mousemove', (event) => {
-        tooltip.style('left', (event.clientX + 14) + 'px').style('top', (event.clientY - 30) + 'px');
+      .on("mousemove", (event) => {
+        const tooltipWidth = tooltip.node().offsetWidth;
+        const xPosition =
+          event.clientX + 14 + tooltipWidth > window.innerWidth
+            ? event.clientX - tooltipWidth - 14
+            : event.clientX + 14;
+        tooltip
+          .style("left", xPosition + "px")
+          .style("top", event.clientY - 30 + "px");
       })
-      .on('mouseout', (event) => {
-        d3.select(event.currentTarget).attr('stroke', 'white').attr('stroke-width', 0.5);
-        tooltip.transition().duration(400).style('opacity', 0);
+      .on("mouseout", (event) => {
+        d3.select(event.currentTarget)
+          .attr("stroke", "white")
+          .attr("stroke-width", 0.5);
+        tooltip.transition().duration(400).style("opacity", 0);
       });
 
     if (!isChoropleth && totalEntries > 0) {
-      const bubbleData = Array.from(aggMap.entries()).map(([name, val]) => ({ name, value: val }));
-      const radiusScale = d3.scaleSqrt()
-        .domain([0, d3.max(bubbleData, d => d.value)])
+      const bubbleData = Array.from(aggMap.entries()).map(([name, val]) => ({
+        name,
+        value: val,
+      }));
+      const radiusScale = d3
+        .scaleSqrt()
+        .domain([0, d3.max(bubbleData, (d) => d.value)])
         .range([4, 35]);
 
       const cols = Math.ceil(Math.sqrt(bubbleData.length));
       const cellW = (width - 100) / cols;
       const cellH = (height - 60) / Math.ceil(bubbleData.length / cols);
 
-      g.selectAll('circle.bubble')
+      g.selectAll("circle.bubble")
         .data(bubbleData)
-        .join('circle')
-        .attr('class', 'bubble')
-        .attr('cx', (d, i) => 50 + (i % cols) * cellW + cellW / 2)
-        .attr('cy', (d, i) => 30 + Math.floor(i / cols) * cellH + cellH / 2)
-        .attr('r', d => radiusScale(d.value))
-        .attr('fill', d => colorScale(d.value))
-        .attr('fill-opacity', 0.7)
-        .attr('stroke', '#112D4E')
-        .attr('stroke-width', 1)
-        .style('cursor', 'pointer')
-        .on('mouseover', (event, d) => {
-          d3.select(event.currentTarget).attr('fill-opacity', 1).attr('stroke-width', 2);
-          const ttFmt = config.tooltipFormat || 'raw';
+        .join("circle")
+        .attr("class", "bubble")
+        .attr("cx", (d, i) => 50 + (i % cols) * cellW + cellW / 2)
+        .attr("cy", (d, i) => 30 + Math.floor(i / cols) * cellH + cellH / 2)
+        .attr("r", (d) => radiusScale(d.value))
+        .attr("fill", (d) => colorScale(d.value))
+        .attr("fill-opacity", 0.7)
+        .attr("stroke", "#112D4E")
+        .attr("stroke-width", 1)
+        .style("cursor", "pointer")
+        .on("mouseover", (event, d) => {
+          d3.select(event.currentTarget)
+            .attr("fill-opacity", 1)
+            .attr("stroke-width", 2);
+          const ttFmt = config.tooltipFormat || "raw";
           const formattedVal = formatValue(d.value, ttFmt);
-          tooltip.transition().duration(200).style('opacity', 0.95);
-          tooltip.html(`<strong>${d.name}</strong><br/>${aggLabel} of ${config.valCol}: ${formattedVal}`)
-            .style('left', (event.clientX + 14) + 'px')
-            .style('top', (event.clientY - 30) + 'px');
+          tooltip.transition().duration(200).style("opacity", 0.95);
+          tooltip.html(
+            `<strong>${d.name}</strong><br/>${aggLabel} of ${config.valCol}: ${formattedVal}`,
+          );
+
+          setTimeout(() => {
+            const tooltipWidth = tooltip.node().offsetWidth;
+            const xPosition =
+              event.clientX + 14 + tooltipWidth > window.innerWidth
+                ? event.clientX - tooltipWidth - 14
+                : event.clientX + 14;
+            tooltip
+              .style("left", xPosition + "px")
+              .style("top", event.clientY - 30 + "px");
+          }, 0);
         })
-        .on('mousemove', (event) => {
-          tooltip.style('left', (event.clientX + 14) + 'px').style('top', (event.clientY - 30) + 'px');
+        .on("mousemove", (event) => {
+          const tooltipWidth = tooltip.node().offsetWidth;
+          const xPosition =
+            event.clientX + 14 + tooltipWidth > window.innerWidth
+              ? event.clientX - tooltipWidth - 14
+              : event.clientX + 14;
+          tooltip
+            .style("left", xPosition + "px")
+            .style("top", event.clientY - 30 + "px");
         })
-        .on('mouseout', (event) => {
-          d3.select(event.currentTarget).attr('fill-opacity', 0.7).attr('stroke-width', 1);
-          tooltip.transition().duration(400).style('opacity', 0);
+        .on("mouseout", (event) => {
+          d3.select(event.currentTarget)
+            .attr("fill-opacity", 0.7)
+            .attr("stroke-width", 1);
+          tooltip.transition().duration(400).style("opacity", 0);
         });
 
-      g.selectAll('text.bubble-label')
+      g.selectAll("text.bubble-label")
         .data(bubbleData)
-        .join('text')
-        .attr('class', 'bubble-label')
-        .attr('x', (d, i) => 50 + (i % cols) * cellW + cellW / 2)
-        .attr('y', (d, i) => 30 + Math.floor(i / cols) * cellH + cellH / 2 + 3)
-        .attr('text-anchor', 'middle')
-        .attr('font-size', '9px')
-        .attr('fill', '#112D4E')
-        .attr('font-weight', 'bold')
-        .attr('pointer-events', 'none')
-        .text(d => d.name.length > 10 ? d.name.substring(0, 8) + '..' : d.name);
+        .join("text")
+        .attr("class", "bubble-label")
+        .attr("x", (d, i) => 50 + (i % cols) * cellW + cellW / 2)
+        .attr("y", (d, i) => 30 + Math.floor(i / cols) * cellH + cellH / 2 + 3)
+        .attr("text-anchor", "middle")
+        .attr("font-size", "9px")
+        .attr("fill", "#112D4E")
+        .attr("font-weight", "bold")
+        .attr("pointer-events", "none")
+        .text((d) =>
+          d.name.length > 10 ? d.name.substring(0, 8) + ".." : d.name,
+        );
     }
 
-    return () => { svg.selectAll('*').remove(); d3.select(tooltipRef.current).style('opacity', 0); };
+    return () => {
+      svg.selectAll("*").remove();
+      d3.select(tooltipRef.current).style("opacity", 0);
+    };
   }, [filteredData, isConfigured, geoData, config]);
 
   return (
@@ -255,16 +338,25 @@ const AdvancedChart2Page = () => {
       <div className="flex justify-between items-center">
         <div>
           <PageTitle title="Choropleth Map" />
-          <p className="text-gray-500 dark:text-gray-400">View geographical distribution using D3.js.</p>
+          <p className="text-gray-500 dark:text-gray-400">
+            View geographical distribution using D3.js.
+          </p>
         </div>
         {selectedDataset && (
-          <Button variant={isEditing ? "primary" : "secondary"} onClick={() => {
-            if (isAdmin) {
-              setIsEditing(!isEditing);
-            } else {
-              addToast({ type: 'error', message: 'Action restricted: Admin access required to edit chart.' });
-            }
-          }}>
+          <Button
+            variant={isEditing ? "primary" : "secondary"}
+            onClick={() => {
+              if (isAdmin) {
+                setIsEditing(!isEditing);
+              } else {
+                addToast({
+                  type: "error",
+                  message:
+                    "Action restricted: Admin access required to edit chart.",
+                });
+              }
+            }}
+          >
             <Settings2 className="w-4 h-4 mr-2" />
             {isEditing ? "Close Builder" : "Edit Chart"}
           </Button>
@@ -272,33 +364,44 @@ const AdvancedChart2Page = () => {
       </div>
 
       {!loading && selectedDataset && (
-        <FilterBar 
-          schemaFilters={selectedDataset.dashboardConfig?.filters || []} 
+        <FilterBar
+          schemaFilters={selectedDataset.dashboardConfig?.filters || []}
           parsedData={parsedData}
-          filters={filters} 
-          onFilterChange={handleFilterChange} 
+          filters={filters}
+          onFilterChange={handleFilterChange}
           onReset={() => setFilters({})}
         />
       )}
-      
+
       {isEditing && selectedDataset && (
-        <AdvancedBuilderPanel 
-          config={config} 
-          onSave={handleSaveConfig} 
+        <AdvancedBuilderPanel
+          config={config}
+          onSave={handleSaveConfig}
           onClose={() => setIsEditing(false)}
-          columns={schema?.columns?.map(c => c.name) || []}
+          columns={schema?.columns?.map((c) => c.name) || []}
           chartType="map"
         />
       )}
 
-      {(loading || (!geoData && selectedDataset)) ? (
-        <div className="h-64 flex items-center justify-center"><Spinner /></div>
+      {loading || (!geoData && selectedDataset) ? (
+        <div className="h-64 flex items-center justify-center">
+          <Spinner />
+        </div>
       ) : !selectedDataset ? (
-        <EmptyState title="No Dataset Selected" description="Please set a primary dataset in Data Management first." />
+        <EmptyState
+          title="No Dataset Selected"
+          description="Please set a primary dataset in Data Management first."
+        />
       ) : !isCompatible() ? (
-        <EmptyState title="Incompatible Data Mapping" description="The selected columns do not exist in the current dataset schema." />
+        <EmptyState
+          title="Incompatible Data Mapping"
+          description="The selected columns do not exist in the current dataset schema."
+        />
       ) : !isConfigured ? (
-        <EmptyState title="Build Your Advanced Chart" description="Your chart is empty. Click 'Edit Chart' to map geographical data." />
+        <EmptyState
+          title="Build Your Advanced Chart"
+          description="Your chart is empty. Click 'Edit Chart' to map geographical data."
+        />
       ) : (
         <>
           <Card className="w-full min-h-125 p-0 relative overflow-hidden">

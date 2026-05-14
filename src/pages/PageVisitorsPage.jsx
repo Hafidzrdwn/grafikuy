@@ -150,7 +150,7 @@ const PageVisitorsPage = () => {
             </div>
           </div>
 
-          <div className="h-[300px] w-full">
+          <div className="h-full w-full">
             {chartData.length > 0 ? (
               <AreaChart data={chartData} formatConfig={timeFilter} />
             ) : (

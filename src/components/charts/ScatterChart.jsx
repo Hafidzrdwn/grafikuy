@@ -103,7 +103,7 @@ const ScatterChart = ({ data, formatConfig = {} }) => {
           .attr('opacity', 1)
           .attr('stroke-width', 2);
           
-        const { xAxisFormat = 'none', yAxisFormat = 'none', tooltipFormat = 'none' } = formatConfig;
+        const { tooltipFormat = 'none' } = formatConfig;
         const fmtTooltipVal = (v) => tooltipFormat !== 'none' ? formatValue(v, tooltipFormat) : new Intl.NumberFormat('id-ID').format(Number(v));
         const xFormatted = fmtTooltipVal(d.x);
         const yFormatted = fmtTooltipVal(d.y);
@@ -125,7 +125,7 @@ const ScatterChart = ({ data, formatConfig = {} }) => {
           : event.clientX + 12;
         tooltip.style('left', xPosition + 'px').style('top', (event.clientY - 28) + 'px');
       })
-      .on('mouseout', (event, d) => {
+      .on('mouseout', (event) => {
         d3.select(event.currentTarget)
           .attr('r', 6)
           .attr('opacity', 0.8)

@@ -1,19 +1,21 @@
 import { useRef, useEffect } from 'react';
 import * as d3 from 'd3';
 import { formatValue } from '@/services/aggregationEngine';
+import { useResizeObserver } from '@/hooks/useResizeObserver';
 
 const PieChart = ({ data, formatConfig = {} }) => {
+  const [wrapperRef, dimensions] = useResizeObserver();
   const svgRef = useRef();
   const tooltipRef = useRef();
 
   useEffect(() => {
-    if (!data || !svgRef.current) return;
+    if (!data || !svgRef.current || dimensions.width === 0) return;
 
     const cleanData = data.map(d => ({ ...d, value: Number(d.value) || 0 })).filter(d => d.value > 0);
     if (cleanData.length === 0) return;
 
-    const width = 500;
-    const height = 300;
+    const { width, height: hookHeight } = dimensions;
+    const height = Math.max(hookHeight, 300);
     const radius = Math.min(width, height) / 2 - 20;
 
     const svg = d3.select(svgRef.current)
@@ -47,15 +49,15 @@ const PieChart = ({ data, formatConfig = {} }) => {
 
     g.append('text')
       .attr('text-anchor', 'middle')
-      .attr('dy', '-0.2em')
-      .style('font-size', '14px')
+      .attr('dy', '-1em')
+      .style('font-size', '16px')
       .style('fill', 'currentColor')
       .text('Total');
 
     g.append('text')
       .attr('text-anchor', 'middle')
-      .attr('dy', '1.2em')
-      .style('font-size', '18px')
+      .attr('dy', '.7em')
+      .style('font-size', '20px')
       .style('font-weight', 'bold')
       .style('fill', 'currentColor')
       .text(new Intl.NumberFormat('en-US', { notation: 'compact' }).format(total));
@@ -76,12 +78,22 @@ const PieChart = ({ data, formatConfig = {} }) => {
         const formatted = tooltipFormat !== 'none' ? formatValue(d.data.value, tooltipFormat) : new Intl.NumberFormat('id-ID').format(d.data.value);
         const percent = ((d.data.value / total) * 100).toFixed(1);
         tooltip.transition().duration(200).style('opacity', .95);
-        tooltip.html(`<strong>${d.data.label}</strong><br/>Value: ${formatted}<br/>Share: ${percent}%`)
-          .style('left', (event.clientX + 12) + 'px')
-          .style('top', (event.clientY - 28) + 'px');
+        tooltip.html(`<strong>${d.data.label}</strong><br/>Value: ${formatted}<br/>Share: ${percent}%`);
+
+        setTimeout(() => {
+          const tooltipWidth = tooltip.node().offsetWidth;
+          const xPosition = event.clientX + 12 + tooltipWidth > window.innerWidth
+            ? event.clientX - tooltipWidth - 12
+            : event.clientX + 12;
+          tooltip.style('left', xPosition + 'px').style('top', (event.clientY - 28) + 'px');
+        }, 0);
       })
       .on('mousemove', (event) => {
-        tooltip.style('left', (event.clientX + 12) + 'px').style('top', (event.clientY - 28) + 'px');
+        const tooltipWidth = tooltip.node().offsetWidth;
+        const xPosition = event.clientX + 12 + tooltipWidth > window.innerWidth
+          ? event.clientX - tooltipWidth - 12
+          : event.clientX + 12;
+        tooltip.style('left', xPosition + 'px').style('top', (event.clientY - 28) + 'px');
       })
       .on('mouseout', (event) => {
         d3.select(event.currentTarget).style('opacity', 1);
@@ -89,7 +101,7 @@ const PieChart = ({ data, formatConfig = {} }) => {
       });
 
     const legend = svg.append('g')
-      .attr('transform', `translate(${width - 120}, 20)`);
+      .attr('transform', `translate(${width - 90}, 0)`);
 
     const legendItems = legend.selectAll('g')
       .data(cleanData.slice(0, 8))
@@ -113,10 +125,10 @@ const PieChart = ({ data, formatConfig = {} }) => {
       svg.selectAll('*').remove();
       d3.select(tooltipRef.current).style('opacity', 0);
     };
-  }, [data]);
+  }, [data, dimensions]);
 
   return (
-    <div className="relative w-full h-full">
+    <div ref={wrapperRef} className="relative w-full flex-1 min-h-[300px]">
       <svg ref={svgRef} className="w-full h-full text-gray-700 dark:text-gray-300" />
       <div ref={tooltipRef} className="dark:text-gray-800" />
     </div>

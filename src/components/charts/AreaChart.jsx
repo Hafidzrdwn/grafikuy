@@ -1,24 +1,24 @@
 import { useRef, useEffect } from 'react';
 import * as d3 from 'd3';
+import { useResizeObserver } from '@/hooks/useResizeObserver';
 
 const AreaChart = ({ data, formatConfig }) => {
   const svgRef = useRef(null);
-  const wrapperRef = useRef(null);
+  const tooltipRef = useRef(null); 
+  const [wrapperRef, dimensions] = useResizeObserver();
 
   useEffect(() => {
-    if (!data || data.length === 0 || !svgRef.current || !wrapperRef.current) return;
-
-    d3.select(svgRef.current).selectAll("*").remove();
+    if (!data || data.length === 0 || !svgRef.current || dimensions.width === 0) return;
 
     const margin = { top: 20, right: 30, bottom: 40, left: 50 };
-    const width = wrapperRef.current.clientWidth - margin.left - margin.right;
-    const height = 300 - margin.top - margin.bottom;
+    const { width, height: hookHeight } = dimensions;
+    const height = Math.max(hookHeight, 350);
 
-    const svg = d3.select(svgRef.current)
-      .attr('width', width + margin.left + margin.right)
-      .attr('height', height + margin.top + margin.bottom)
-      .append('g')
-      .attr('transform', `translate(${margin.left},${margin.top})`);
+    const svg = d3
+      .select(svgRef.current)
+      .attr("viewBox", `0 0 ${width} ${height}`);
+
+    svg.selectAll("*").remove(); 
 
     const parsedData = data.map(d => ({
       date: new Date(d.date),
@@ -27,12 +27,12 @@ const AreaChart = ({ data, formatConfig }) => {
 
     const x = d3.scaleTime()
       .domain(d3.extent(parsedData, d => d.date))
-      .range([0, width]);
+      .range([margin.left, width - margin.right]);
 
     const y = d3.scaleLinear()
       .domain([0, d3.max(parsedData, d => d.value) || 10])
       .nice()
-      .range([height, 0]);
+      .range([height - margin.bottom, margin.top]);
 
     const defs = svg.append("defs");
     const gradient = defs.append("linearGradient")
@@ -44,7 +44,7 @@ const AreaChart = ({ data, formatConfig }) => {
 
     gradient.append("stop")
       .attr("offset", "0%")
-      .attr("stop-color", "#3F72AF")
+      .attr("stop-color", "#3F72AF") 
       .attr("stop-opacity", 0.6);
 
     gradient.append("stop")
@@ -63,31 +63,35 @@ const AreaChart = ({ data, formatConfig }) => {
     }
 
     const xAxis = svg.append('g')
-      .attr('transform', `translate(0,${height})`)
+      .attr('transform', `translate(0,${height - margin.bottom})`) 
       .call(xAxisGenerator)
+      .attr('color', 'currentColor')
       .attr('class', 'text-gray-500 dark:text-gray-400 font-sans');
 
-    xAxis.select('.domain').attr('stroke', '#ccc');
-    xAxis.selectAll('line').attr('stroke', '#ccc');
+    xAxis.select('.domain').attr('stroke', 'currentColor').attr('stroke-opacity', 0.2);
+    xAxis.selectAll('line').attr('stroke', 'currentColor').attr('stroke-opacity', 0.2);
 
     const yAxis = svg.append('g')
+      .attr('transform', `translate(${margin.left},0)`)
       .call(d3.axisLeft(y).ticks(5))
+      .attr('color', 'currentColor')
       .attr('class', 'text-gray-500 dark:text-gray-400 font-sans');
 
-    yAxis.select('.domain').attr('stroke', '#ccc');
-    yAxis.selectAll('line').attr('stroke', '#ccc');
+    yAxis.select('.domain').attr('stroke', 'currentColor').attr('stroke-opacity', 0.2);
+    yAxis.selectAll('line').attr('stroke', 'currentColor').attr('stroke-opacity', 0.2);
 
     svg.append('g')
       .attr('class', 'grid')
-      .attr('opacity', 0.1)
-      .call(d3.axisLeft(y).tickSize(-width).tickFormat(''))
-      .selectAll('line')
-      .attr('stroke', '#3F72AF');
+      .attr('transform', `translate(${margin.left},0)`)
+      .attr('color', 'currentColor')
+      .style('stroke-opacity', 0.1)
+      .call(d3.axisLeft(y).tickSize(-width + margin.left + margin.right).tickFormat(''))
+      .select('.domain').remove();
 
     const area = d3.area()
       .curve(d3.curveMonotoneX)
       .x(d => x(d.date))
-      .y0(y(0))
+      .y0(y(0)) 
       .y1(d => y(d.value));
 
     const line = d3.line()
@@ -103,13 +107,21 @@ const AreaChart = ({ data, formatConfig }) => {
     svg.append('path')
       .datum(parsedData)
       .attr('fill', 'none')
-      .attr('stroke', '#112D4E')
+      .attr('stroke', 'var(--color-primary)') 
       .attr('stroke-width', 3)
       .attr('d', line);
 
-    const tooltip = d3.select('body').append('div')
-      .attr('class', 'absolute hidden bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg p-2 rounded text-sm z-50 pointer-events-none text-gray-800 dark:text-gray-200')
-      .style('opacity', 0);
+    const tooltip = d3.select(tooltipRef.current)
+      .style("opacity", 0)
+      .style("position", "fixed")
+      .style("z-index", "9999")
+      .style("background", "white")
+      .style("border", "1px solid #ccc")
+      .style("border-radius", "6px")
+      .style("padding", "8px 12px")
+      .style("pointer-events", "none")
+      .style("font-size", "12px")
+      .style("box-shadow", "0 4px 12px rgb(0 0 0 / 0.15)");
 
     const points = svg.selectAll('.point')
       .data(parsedData)
@@ -120,7 +132,7 @@ const AreaChart = ({ data, formatConfig }) => {
       .attr('cy', d => y(d.value))
       .attr('r', 4)
       .attr('fill', '#fff')
-      .attr('stroke', '#112D4E')
+      .attr('stroke', 'var(--color-primary)')
       .attr('stroke-width', 2)
       .attr('cursor', 'pointer');
 
@@ -128,9 +140,9 @@ const AreaChart = ({ data, formatConfig }) => {
       d3.select(this)
         .transition().duration(200)
         .attr('r', 6)
-        .attr('fill', '#3F72AF');
+        .attr('fill', 'var(--color-primary)');
 
-      tooltip.classed('hidden', false).transition().duration(200).style('opacity', 1);
+      tooltip.transition().duration(200).style('opacity', 0.95);
       
       let dateLabel = '';
       if (formatConfig === 'month') {
@@ -144,14 +156,24 @@ const AreaChart = ({ data, formatConfig }) => {
       const compactFormat = new Intl.NumberFormat('en-US', { notation: "compact", maximumFractionDigits: 1 }).format(d.value);
 
       tooltip.html(`
-        <div class="font-semibold mb-1">${dateLabel}</div>
-        <div class="text-xs text-gray-500 dark:text-gray-400">Number of Visitors: <span class="font-bold text-gray-900 dark:text-white">${compactFormat}</span></div>
+        <div class="font-semibold mb-1 text-gray-900">${dateLabel}</div>
+        <div class="text-xs text-gray-500">Number of Visitors: <span class="font-bold text-gray-900">${compactFormat}</span></div>
       `);
+
+      setTimeout(() => {
+        const tooltipWidth = tooltip.node().offsetWidth;
+        const xPosition = event.clientX + 15 + tooltipWidth > window.innerWidth
+            ? event.clientX - tooltipWidth - 15
+            : event.clientX + 15;
+        tooltip.style("left", xPosition + "px").style("top", event.clientY - 28 + "px");
+      }, 0);
     })
     .on('mousemove', function(event) {
-      tooltip
-        .style('left', (event.pageX + 15) + 'px')
-        .style('top', (event.pageY - 28) + 'px');
+      const tooltipWidth = tooltip.node().offsetWidth;
+      const xPosition = event.clientX + 15 + tooltipWidth > window.innerWidth
+          ? event.clientX - tooltipWidth - 15
+          : event.clientX + 15;
+      tooltip.style("left", xPosition + "px").style("top", event.clientY - 28 + "px");
     })
     .on('mouseout', function() {
       d3.select(this)
@@ -159,26 +181,19 @@ const AreaChart = ({ data, formatConfig }) => {
         .attr('r', 4)
         .attr('fill', '#fff');
 
-      tooltip.transition().duration(500).style('opacity', 0).on('end', function() {
-        d3.select(this).classed('hidden', true);
-      });
+      tooltip.transition().duration(400).style('opacity', 0);
     });
-
-    const handleResize = () => {
-      d3.select(svgRef.current).selectAll("*").remove();
-    };
     
-    window.addEventListener('resize', handleResize);
-
     return () => {
-      d3.selectAll('.absolute').remove(); 
-      window.removeEventListener('resize', handleResize);
+      svg.selectAll("*").remove();
+      d3.select(tooltipRef.current).style('opacity', 0);
     };
-  }, [data, formatConfig]); 
+  }, [data, formatConfig, dimensions]); 
 
   return (
-    <div ref={wrapperRef} className="w-full h-full relative">
-      <svg ref={svgRef} className="w-full overflow-visible" />
+    <div ref={wrapperRef} className="w-full flex-1 min-h-[350px] relative">
+      <svg ref={svgRef} className="w-full h-full text-gray-700 dark:text-gray-300 block" />
+      <div ref={tooltipRef} className="dark:text-gray-800" />
     </div>
   );
 };
