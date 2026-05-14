@@ -16,13 +16,14 @@ const PageVisitorsPage = () => {
       setDailyData(data || {});
       setLoading(false);
     });
-    return () => unsubscribe();
+    return unsubscribe;
   }, []);
 
   const processData = () => {
     if (!dailyData || Object.keys(dailyData).length === 0) return [];
 
     const parsedData = Object.entries(dailyData)
+      .filter(([dateStr]) => dateStr !== 'total')
       .map(([dateStr, value]) => ({
         date: new Date(dateStr),
         value,
@@ -99,7 +100,7 @@ const PageVisitorsPage = () => {
   };
 
   const chartData = processData();
-  const totalViews = chartData.reduce((acc, curr) => acc + curr.value, 0);
+  const totalViews = dailyData?.total || 0;
 
   return (
     <div className="space-y-6">

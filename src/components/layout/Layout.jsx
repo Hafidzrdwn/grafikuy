@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import Sidebar from './Sidebar';
-import Topbar from './Topbar';
+import Sidebar from '@/components/layout/Sidebar';
+import Topbar from '@/components/layout/Topbar';
 import { Link, Outlet } from 'react-router-dom';
-import PageVisitors from '../ui/PageVisitors';
+import PageVisitors from '@/components/ui/PageVisitors';
 import { Heart } from 'lucide-react';
+import { incrementPageView } from '@/services/firebase';
 
 const Layout = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -22,6 +23,15 @@ const Layout = () => {
     window.addEventListener('resize', handleResize);
     handleResize();
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    const sessionKey = `grafikuy_already_visited`;
+
+    if (!sessionStorage.getItem(sessionKey)) {
+      sessionStorage.setItem(sessionKey, 'true');
+      incrementPageView();
+    }
   }, []);
 
   const toggleSidebar = () => setIsSidebarCollapsed(prev => !prev);

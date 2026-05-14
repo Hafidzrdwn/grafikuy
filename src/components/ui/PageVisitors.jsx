@@ -2,7 +2,7 @@ import { usePageViews } from "@/hooks/usePageViews";
 import { Eye } from "lucide-react";
 
 const PageVisitors = ({ className = "sm:flex hidden" }) => {
-  const totalViews = usePageViews("main_dashboard");
+  const totalViews = usePageViews();
 
   return (
     <div>
