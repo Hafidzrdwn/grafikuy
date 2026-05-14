@@ -35,8 +35,8 @@ const Layout = () => {
         <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
           <div className="flex justify-between sm:justify-start items-center mt-2 mb-4">
             <PageVisitors className='sm:hidden inline-flex' />
-            <p className="text-center text-gray-500 dark:text-gray-400">
-              Made with <Heart className='inline-flex w-4 h-4' fill='red' strokeWidth={0} /> by <Link to="https://hafidzrdwn.my.id" target='_blank' className='text-(--color-primary) dark:text-(--color-primary-dark) underline'>Hafidz Ridwan Cahya</Link>
+            <p className="text-center text-gray-500 dark:text-gray-300">
+              Made with <Heart className='inline-flex w-4 h-4' fill='red' strokeWidth={0} /> by <Link to="https://hafidzrdwn.my.id" target='_blank' className='text-(--color-primary) underline'>Hafidz Ridwan Cahya</Link>
             </p>
           </div>
           <Outlet />

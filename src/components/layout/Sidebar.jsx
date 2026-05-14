@@ -21,7 +21,8 @@ const Sidebar = ({ isSidebarCollapsed, isMobileScreen, toggleSidebar }) => {
     <aside className={`fixed top-0 left-0 z-40 h-screen transition-all duration-300 bg-white dark:bg-[#112D4E] border-r border-(--color-muted) dark:border-[#3F72AF]/30 ${sidebarClass}`}>
       <div className="flex flex-col h-full">
         <div className="h-16 flex items-center px-4 border-b border-(--color-muted) dark:border-[#3F72AF]/30">
-          {!isSidebarCollapsed && <span className="text-xl font-bold text-(--color-primary) dark:text-[#DBE2EF] tracking-wide">Grafikuy</span>}
+          {!isSidebarCollapsed && <img src="/logo.png" alt="Logo" className="h-11 w-11 mr-3 bg-white rounded-md" />}
+          {!isSidebarCollapsed && <span className="text-xl font-bold text-(--color-primary) dark:text-[#DBE2EF] tracking-wide uppercase">Grafikuy</span>}
           <button onClick={toggleSidebar} className={`p-2 cursor-pointer rounded-lg hover:bg-(--color-muted) dark:hover:bg-[#3F72AF]/20 text-(--color-dark) dark:text-white transition-colors ${!isSidebarCollapsed ? 'ml-auto' : 'mx-auto'}`}>
             <ChevronLeft className={`w-5 h-5 transition-transform duration-300 ${isSidebarCollapsed ? 'rotate-180' : ''}`} />
           </button>
