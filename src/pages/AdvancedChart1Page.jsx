@@ -1,5 +1,7 @@
 import { useContext, useEffect, useState, useRef } from 'react';
 import { DataContext } from '@/context/DataContext';
+import { AuthContext } from '@/context/AuthContext';
+import { ToastContext } from '@/components/ui/Toast';
 import * as d3 from 'd3';
 import PageTitle from '@/components/ui/PageTitle';
 import Card from '@/components/ui/Card';
@@ -15,6 +17,8 @@ import { flatToGraph, applyFilters, formatValue } from '@/services/aggregationEn
 
 const AdvancedChart1Page = () => {
   const { selectedDataset, parsedData, schema, loading } = useContext(DataContext);
+  const { isAdmin } = useContext(AuthContext);
+  const { addToast } = useContext(ToastContext);
   const [isEditing, setIsEditing] = useState(false);
   const [config, setConfig] = useState(null);
   const [filters, setFilters] = useState({});
@@ -196,7 +200,13 @@ const AdvancedChart1Page = () => {
           <p className="text-gray-500 dark:text-gray-400">Visualize hierarchical structure radiating outward using D3.js.</p>
         </div>
         {selectedDataset && (
-          <Button variant={isEditing ? "primary" : "secondary"} onClick={() => setIsEditing(!isEditing)}>
+          <Button variant={isEditing ? "primary" : "secondary"} onClick={() => {
+            if (isAdmin) {
+              setIsEditing(!isEditing);
+            } else {
+              addToast({ type: 'error', message: 'Action restricted: Admin access required to edit chart.' });
+            }
+          }}>
             <Settings2 className="w-4 h-4 mr-2" />
             {isEditing ? "Close Builder" : "Edit Chart"}
           </Button>

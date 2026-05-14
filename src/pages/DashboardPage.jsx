@@ -1,5 +1,7 @@
 import { useContext, useMemo, useState, useEffect } from 'react';
 import { DataContext } from '@/context/DataContext';
+import { AuthContext } from '@/context/AuthContext';
+import { ToastContext } from '@/components/ui/Toast';
 import PageTitle from '@/components/ui/PageTitle';
 import EmptyState from '@/components/ui/EmptyState';
 import Spinner from '@/components/ui/Spinner';
@@ -20,6 +22,8 @@ import { updateDatasetConfig } from '@/services/firebase';
 
 const DashboardPage = () => {
   const { selectedDataset, parsedData, schema, loading } = useContext(DataContext);
+  const { isAdmin } = useContext(AuthContext);
+  const { addToast } = useContext(ToastContext);
   const [filters, setFilters] = useState({});
   const [isEditing, setIsEditing] = useState(false);
   const [dashboardConfig, setDashboardConfig] = useState(null);
@@ -189,7 +193,13 @@ const DashboardPage = () => {
           <p className="text-gray-500 dark:text-gray-400">Here's what's happening with your data today.</p>
         </div>
         {!isDataEmpty && (
-          <Button variant={isEditing ? "primary" : "secondary"} onClick={() => setIsEditing(!isEditing)}>
+          <Button variant={isEditing ? "primary" : "secondary"} onClick={() => {
+            if (isAdmin) {
+              setIsEditing(!isEditing);
+            } else {
+              addToast({ type: 'error', message: 'Action restricted: Admin access required to edit dashboard.' });
+            }
+          }}>
             <Settings2 className="w-4 h-4 mr-2" />
             {isEditing ? "Close Builder" : "Edit Dashboard"}
           </Button>

@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Database, Activity, Map, Share2, AlignEndHorizontal, ChevronLeft } from 'lucide-react';
+import { LayoutDashboard, Database, Activity, Map, Share2, AlignEndHorizontal, ChevronLeft, Eye } from 'lucide-react';
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -8,6 +8,7 @@ const navItems = [
   { path: '/chart/map', label: 'Map Chart', icon: Map },
   { path: '/chart/force-graph', label: 'Force Graph', icon: Activity },
   { path: '/chart/streamgraph', label: 'Streamgraph', icon: AlignEndHorizontal },
+  { path: '/visitors', label: 'Page Visitors Detail', icon: Eye }
 ];
 
 const Sidebar = ({ isSidebarCollapsed, isMobileScreen, toggleSidebar }) => {

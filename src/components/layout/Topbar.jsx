@@ -1,10 +1,12 @@
 import { useContext } from "react";
 import { ThemeContext } from "@/context/ThemeContext";
-import { Menu, Sun, Moon } from "lucide-react";
+import { AuthContext } from "@/context/AuthContext";
+import { Menu, Sun, Moon, LogIn, LogOut } from "lucide-react";
 import PageVisitors from "../ui/PageVisitors";
 
 const Topbar = ({ toggleSidebar, isSidebarCollapsed }) => {
   const { isDark, toggleTheme } = useContext(ThemeContext);
+  const { user, loginWithGoogle, logoutGoogle } = useContext(AuthContext);
   
   return (
     <header
@@ -32,11 +34,31 @@ const Topbar = ({ toggleSidebar, isSidebarCollapsed }) => {
         <div className="flex items-center gap-3 border-l border-gray-300 dark:border-gray-600 pl-4">
           <div className="block text-right">
             <div className="text-base font-medium text-(--color-dark) dark:text-white">
-              Hafidz Ridwan Cahya
+              {user ? user.displayName : "Guest"}
             </div>
+            {user && (
+              <button 
+                onClick={logoutGoogle}
+                className="text-xs text-red-500 hover:text-red-600 flex items-center justify-end gap-1 cursor-pointer w-full"
+              >
+                <LogOut className="w-3 h-3" /> Logout
+              </button>
+            )}
+            {!user && (
+              <button 
+                onClick={loginWithGoogle}
+                className="text-xs text-blue-500 hover:text-blue-600 flex items-center justify-end gap-1 cursor-pointer w-full"
+              >
+                <LogIn className="w-3 h-3" /> Login
+              </button>
+            )}
           </div>
-          <div className="w-10 h-10 rounded-full bg-(--color-primary) text-(--color-light) flex items-center justify-center font-bold text-sm shadow-sm ring-2 ring-(--color-light)">
-            HRC
+          <div className="w-10 h-10 rounded-full bg-(--color-primary) text-(--color-light) flex items-center justify-center font-bold text-sm shadow-sm ring-2 ring-(--color-light) overflow-hidden">
+            {user?.photoURL ? (
+              <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            ) : (
+              "G"
+            )}
           </div>
         </div>
       </div>

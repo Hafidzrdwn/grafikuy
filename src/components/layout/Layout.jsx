@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
-import { Outlet } from 'react-router-dom';
+import { Link, Outlet } from 'react-router-dom';
 import PageVisitors from '../ui/PageVisitors';
+import { Heart } from 'lucide-react';
 
 const Layout = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -32,8 +33,18 @@ const Layout = () => {
       
       <main className={`transition-all duration-300 pt-16 min-h-screen ${isSidebarCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
         <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
-          <PageVisitors className='sm:hidden inline-flex mt-2 mb-4' />
+          <div className="flex justify-between sm:justify-start items-center mt-2 mb-4">
+            <PageVisitors className='sm:hidden inline-flex' />
+            <p className="text-center text-gray-500 dark:text-gray-400">
+              Made with <Heart className='inline-flex w-4 h-4' fill='red' strokeWidth={0} /> by <Link to="https://hafidzrdwn.my.id" target='_blank' className='text-(--color-primary) dark:text-(--color-primary-dark) underline'>Hafidz Ridwan Cahya</Link>
+            </p>
+          </div>
           <Outlet />
+        </div>
+        <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+          <p className="text-center text-gray-500 dark:text-gray-400">
+            &copy; {new Date().getFullYear()} Hafidz Ridwan Cahya. All rights reserved.
+          </p>
         </div>
       </main>
     </div>
