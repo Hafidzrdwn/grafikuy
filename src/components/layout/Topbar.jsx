@@ -2,7 +2,7 @@ import { useContext } from "react";
 import { ThemeContext } from "@/context/ThemeContext";
 import { AuthContext } from "@/context/AuthContext";
 import { Menu, Sun, Moon, LogIn, LogOut } from "lucide-react";
-import PageVisitors from "../ui/PageVisitors";
+import PageVisitors from "@/components/ui/PageVisitors";
 
 const Topbar = ({ toggleSidebar, isSidebarCollapsed }) => {
   const { isDark, toggleTheme } = useContext(ThemeContext);

@@ -1,4 +1,4 @@
-import Button from './Button';
+import Button from '@/components/ui/Button';
 import { Database } from 'lucide-react';
 
 const EmptyState = ({ icon: Icon = Database, title, description, action }) => {
