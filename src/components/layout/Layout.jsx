@@ -43,9 +43,9 @@ const Layout = () => {
       
       <main className={`transition-all duration-300 pt-16 min-h-screen ${isSidebarCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
         <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
-          <div className="flex justify-between sm:justify-start items-center mt-2 mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-y-2 mt-2 mb-4">
             <PageVisitors className='sm:hidden inline-flex' />
-            <p className="text-center text-gray-500 dark:text-gray-300">
+            <p className="text-gray-500 dark:text-gray-300">
               Made with <Heart className='inline-flex w-4 h-4' fill='red' strokeWidth={0} /> by <Link to="https://hafidzrdwn.my.id" target='_blank' className='text-(--color-primary) underline'>Hafidz Ridwan Cahya</Link>
             </p>
           </div>
